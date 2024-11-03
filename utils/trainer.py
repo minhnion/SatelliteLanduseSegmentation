@@ -102,11 +102,10 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
             "val_recall": recall,
         }
 
+
         for class_name, metrics in class_idx_to_pc.items():
             log_data[f"{class_name}_precision"] = metrics[0]
             log_data[f"{class_name}_recall"] = metrics[1]
-
-        plot_predictions(val_inputs, val_masks, val_outputs, classes, epoch, device)
 
         # Save the model if the validation loss is the best we've seen so far
         if epoch_val_loss < best_val_loss:
