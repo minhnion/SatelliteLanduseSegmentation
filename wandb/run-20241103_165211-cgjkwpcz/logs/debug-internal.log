@@ -1,0 +1,168 @@
+2024-11-03 16:52:11,593 INFO    MainThread:18042 [internal.py:wandb_internal():90] W&B internal server running at pid: 18042, started at: 2024-11-03 16:52:11.592877
+2024-11-03 16:52:11,595 INFO    WriterThread:18042 [datastore.py:open_for_write():75] open: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/run-cgjkwpcz.wandb
+2024-11-03 16:52:11,597 DEBUG   SenderThread:18042 [sender.py:send():236] send: header
+2024-11-03 16:52:11,597 DEBUG   SenderThread:18042 [sender.py:send():236] send: run
+2024-11-03 16:52:12,144 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: check_version
+2024-11-03 16:52:12,149 INFO    SenderThread:18042 [dir_watcher.py:__init__():216] watching files in: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files
+2024-11-03 16:52:12,149 INFO    SenderThread:18042 [sender.py:_start_run_threads():815] run started: cgjkwpcz with start time 1730616731
+2024-11-03 16:52:12,150 DEBUG   SenderThread:18042 [sender.py:send():236] send: summary
+2024-11-03 16:52:12,150 INFO    SenderThread:18042 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2024-11-03 16:52:12,150 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: check_version
+2024-11-03 16:52:12,445 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: run_start
+2024-11-03 16:52:12,457 DEBUG   HandlerThread:18042 [meta.py:__init__():35] meta init
+2024-11-03 16:52:12,457 DEBUG   HandlerThread:18042 [meta.py:__init__():49] meta init done
+2024-11-03 16:52:12,457 DEBUG   HandlerThread:18042 [meta.py:probe():209] probe
+2024-11-03 16:52:12,465 DEBUG   HandlerThread:18042 [meta.py:_setup_git():199] setup git
+2024-11-03 16:52:12,475 DEBUG   HandlerThread:18042 [meta.py:_setup_git():206] setup git done
+2024-11-03 16:52:12,475 DEBUG   HandlerThread:18042 [meta.py:_save_code():87] save code
+2024-11-03 16:52:12,478 DEBUG   HandlerThread:18042 [meta.py:_save_code():108] save code done
+2024-11-03 16:52:12,478 DEBUG   HandlerThread:18042 [meta.py:_save_patches():125] save patches
+2024-11-03 16:52:12,492 DEBUG   HandlerThread:18042 [meta.py:_save_patches():167] save patches done
+2024-11-03 16:52:12,492 DEBUG   HandlerThread:18042 [meta.py:_save_pip():53] save pip
+2024-11-03 16:52:12,493 DEBUG   HandlerThread:18042 [meta.py:_save_pip():67] save pip done
+2024-11-03 16:52:12,493 DEBUG   HandlerThread:18042 [meta.py:_save_conda():74] save conda
+2024-11-03 16:52:13,152 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/conda-environment.yaml
+2024-11-03 16:52:13,152 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/code/main.py
+2024-11-03 16:52:13,153 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/requirements.txt
+2024-11-03 16:52:13,153 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/wandb-summary.json
+2024-11-03 16:52:13,153 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/code
+2024-11-03 16:52:15,523 DEBUG   HandlerThread:18042 [meta.py:_save_conda():84] save conda done
+2024-11-03 16:52:15,523 DEBUG   HandlerThread:18042 [meta.py:probe():247] probe done
+2024-11-03 16:52:15,528 DEBUG   SenderThread:18042 [sender.py:send():236] send: files
+2024-11-03 16:52:15,528 INFO    SenderThread:18042 [sender.py:_save_file():952] saving file wandb-metadata.json with policy now
+2024-11-03 16:52:15,528 INFO    SenderThread:18042 [sender.py:_save_file():952] saving file code/main.py with policy now
+2024-11-03 16:52:15,535 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-03 16:52:15,536 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: stop_status
+2024-11-03 16:52:15,896 INFO    Thread-12 :18042 [upload_job.py:push():118] Skipped uploading /tmp/tmp143tc9mbwandb/pxtg8uoq-code/main.py
+2024-11-03 16:52:15,988 DEBUG   SenderThread:18042 [sender.py:send():236] send: telemetry
+2024-11-03 16:52:15,988 DEBUG   SenderThread:18042 [sender.py:send():236] send: telemetry
+2024-11-03 16:52:15,989 DEBUG   SenderThread:18042 [sender.py:send():236] send: telemetry
+2024-11-03 16:52:16,153 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/conda-environment.yaml
+2024-11-03 16:52:16,153 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/wandb-metadata.json
+2024-11-03 16:52:16,154 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/output.log
+2024-11-03 16:52:16,545 INFO    Thread-11 :18042 [upload_job.py:push():138] Uploaded file /tmp/tmp143tc9mbwandb/rlswmll4-wandb-metadata.json
+2024-11-03 16:52:17,153 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/output.log
+2024-11-03 16:52:18,043 DEBUG   SenderThread:18042 [sender.py:send():236] send: exit
+2024-11-03 16:52:18,044 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:18,044 INFO    SenderThread:18042 [sender.py:send_exit():372] handling exit code: 0
+2024-11-03 16:52:18,044 INFO    SenderThread:18042 [sender.py:send_exit():374] handling runtime: 5
+2024-11-03 16:52:18,044 INFO    SenderThread:18042 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2024-11-03 16:52:18,045 INFO    SenderThread:18042 [sender.py:send_exit():380] send defer
+2024-11-03 16:52:18,045 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:18,045 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:18,045 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 0
+2024-11-03 16:52:18,045 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:18,046 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 0
+2024-11-03 16:52:18,046 INFO    SenderThread:18042 [sender.py:transition_state():393] send defer: 1
+2024-11-03 16:52:18,046 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:18,046 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 1
+2024-11-03 16:52:18,090 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:18,090 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 1
+2024-11-03 16:52:18,090 INFO    SenderThread:18042 [sender.py:transition_state():393] send defer: 2
+2024-11-03 16:52:18,090 DEBUG   SenderThread:18042 [sender.py:send():236] send: stats
+2024-11-03 16:52:18,091 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:18,091 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 2
+2024-11-03 16:52:18,091 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:18,091 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 2
+2024-11-03 16:52:18,091 INFO    SenderThread:18042 [sender.py:transition_state():393] send defer: 3
+2024-11-03 16:52:18,091 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:18,091 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 3
+2024-11-03 16:52:18,091 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:18,092 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 3
+2024-11-03 16:52:18,092 INFO    SenderThread:18042 [sender.py:transition_state():393] send defer: 4
+2024-11-03 16:52:18,092 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:18,092 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 4
+2024-11-03 16:52:18,092 DEBUG   SenderThread:18042 [sender.py:send():236] send: summary
+2024-11-03 16:52:18,092 INFO    SenderThread:18042 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2024-11-03 16:52:18,092 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:18,093 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 4
+2024-11-03 16:52:18,093 INFO    SenderThread:18042 [sender.py:transition_state():393] send defer: 5
+2024-11-03 16:52:18,093 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:18,093 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 5
+2024-11-03 16:52:18,093 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:18,093 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 5
+2024-11-03 16:52:18,146 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:18,154 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/output.log
+2024-11-03 16:52:18,154 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/wandb-summary.json
+2024-11-03 16:52:18,464 INFO    SenderThread:18042 [sender.py:transition_state():393] send defer: 6
+2024-11-03 16:52:18,465 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:18,466 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:18,466 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 6
+2024-11-03 16:52:18,466 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:18,466 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 6
+2024-11-03 16:52:18,466 INFO    SenderThread:18042 [dir_watcher.py:finish():353] shutting down directory watcher
+2024-11-03 16:52:18,567 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:19,154 INFO    Thread-7  :18042 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/config.yaml
+2024-11-03 16:52:19,155 INFO    SenderThread:18042 [dir_watcher.py:finish():383] scan: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files
+2024-11-03 16:52:19,155 INFO    SenderThread:18042 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/wandb-summary.json wandb-summary.json
+2024-11-03 16:52:19,156 INFO    SenderThread:18042 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/requirements.txt requirements.txt
+2024-11-03 16:52:19,156 INFO    SenderThread:18042 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/conda-environment.yaml conda-environment.yaml
+2024-11-03 16:52:19,156 INFO    SenderThread:18042 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/output.log output.log
+2024-11-03 16:52:19,170 INFO    SenderThread:18042 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/wandb-metadata.json wandb-metadata.json
+2024-11-03 16:52:19,170 INFO    SenderThread:18042 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/config.yaml config.yaml
+2024-11-03 16:52:19,175 INFO    SenderThread:18042 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/code/main.py code/main.py
+2024-11-03 16:52:19,175 INFO    SenderThread:18042 [sender.py:transition_state():393] send defer: 7
+2024-11-03 16:52:19,179 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:19,180 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:19,180 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 7
+2024-11-03 16:52:19,180 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:19,181 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 7
+2024-11-03 16:52:19,181 INFO    SenderThread:18042 [file_pusher.py:finish():171] shutting down file pusher
+2024-11-03 16:52:19,281 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:19,282 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:19,383 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:19,384 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:19,485 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:19,486 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:19,588 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:19,591 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:19,693 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:19,693 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:19,794 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:19,795 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:19,896 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:19,896 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:19,998 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:19,998 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:20,098 INFO    Thread-13 :18042 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/wandb-summary.json
+2024-11-03 16:52:20,100 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:20,100 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:20,119 INFO    Thread-16 :18042 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/output.log
+2024-11-03 16:52:20,146 INFO    Thread-15 :18042 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/conda-environment.yaml
+2024-11-03 16:52:20,157 INFO    Thread-14 :18042 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/requirements.txt
+2024-11-03 16:52:20,163 INFO    Thread-17 :18042 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/files/config.yaml
+2024-11-03 16:52:20,202 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:20,202 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:20,304 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:20,304 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:20,364 INFO    Thread-6 (_thread_body):18042 [sender.py:transition_state():393] send defer: 8
+2024-11-03 16:52:20,364 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:20,364 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 8
+2024-11-03 16:52:20,364 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:20,365 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 8
+2024-11-03 16:52:20,406 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:20,638 INFO    SenderThread:18042 [sender.py:transition_state():393] send defer: 9
+2024-11-03 16:52:20,639 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:20,639 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:20,639 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 9
+2024-11-03 16:52:20,640 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:20,640 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 9
+2024-11-03 16:52:20,640 INFO    SenderThread:18042 [sender.py:transition_state():393] send defer: 10
+2024-11-03 16:52:20,641 DEBUG   SenderThread:18042 [sender.py:send():236] send: final
+2024-11-03 16:52:20,641 DEBUG   SenderThread:18042 [sender.py:send():236] send: footer
+2024-11-03 16:52:20,641 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: defer
+2024-11-03 16:52:20,641 INFO    HandlerThread:18042 [handler.py:handle_request_defer():163] handle defer: 10
+2024-11-03 16:52:20,641 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: defer
+2024-11-03 16:52:20,641 INFO    SenderThread:18042 [sender.py:send_request_defer():389] handle sender defer: 10
+2024-11-03 16:52:20,740 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-03 16:52:20,741 DEBUG   SenderThread:18042 [sender.py:send_request():250] send_request: poll_exit
+2024-11-03 16:52:20,741 INFO    SenderThread:18042 [file_pusher.py:join():176] waiting for file pusher
+2024-11-03 16:52:21,758 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: sampled_history
+2024-11-03 16:52:21,759 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: get_summary
+2024-11-03 16:52:21,760 DEBUG   HandlerThread:18042 [handler.py:handle_request():140] handle_request: shutdown
+2024-11-03 16:52:21,760 INFO    HandlerThread:18042 [handler.py:finish():806] shutting down handler
+2024-11-03 16:52:22,641 INFO    WriterThread:18042 [datastore.py:close():279] close: /home/cong/hungvv/SatPromptedVit/wandb/run-20241103_165211-cgjkwpcz/run-cgjkwpcz.wandb
+2024-11-03 16:52:22,657 INFO    SenderThread:18042 [sender.py:finish():1114] shutting down sender
+2024-11-03 16:52:22,657 INFO    SenderThread:18042 [file_pusher.py:finish():171] shutting down file pusher
+2024-11-03 16:52:22,657 INFO    SenderThread:18042 [file_pusher.py:join():176] waiting for file pusher
+2024-11-03 16:52:22,658 INFO    MainThread:18042 [internal.py:handle_exit():80] Internal process exited

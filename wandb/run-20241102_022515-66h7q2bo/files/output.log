@@ -1,0 +1,8 @@
+
+An error occurred: local variable 'best_model_wts' referenced before assignment
+Traceback (most recent call last):
+  File "/home/cong/hungvv/SatPromptedVit/main.py", line 61, in <module>
+    train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path='best_model.pth', early_stop=True, patience=20)
+  File "/home/cong/hungvv/SatPromptedVit/utils/trainer.py", line 132, in train
+    model.load_state_dict(best_model_wts)
+UnboundLocalError: local variable 'best_model_wts' referenced before assignment

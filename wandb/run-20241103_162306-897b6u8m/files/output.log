@@ -1,0 +1,4 @@
+/home/cong/anaconda3/envs/pqhung/lib/python3.10/site-packages/torch/optim/lr_scheduler.py:62: UserWarning: The verbose parameter is deprecated. Please use get_last_lr() to access the learning rate.
+  warnings.warn(
+Best model has train loss: inf, val loss: inf
+precision: inf, recall: inf

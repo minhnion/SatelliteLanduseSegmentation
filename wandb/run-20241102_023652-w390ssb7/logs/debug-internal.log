@@ -1,0 +1,243 @@
+2024-11-02 02:36:52,807 INFO    MainThread:29141 [internal.py:wandb_internal():90] W&B internal server running at pid: 29141, started at: 2024-11-02 02:36:52.807244
+2024-11-02 02:36:52,809 INFO    WriterThread:29141 [datastore.py:open_for_write():75] open: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/run-w390ssb7.wandb
+2024-11-02 02:36:52,812 DEBUG   SenderThread:29141 [sender.py:send():236] send: header
+2024-11-02 02:36:52,812 DEBUG   SenderThread:29141 [sender.py:send():236] send: run
+2024-11-02 02:36:53,493 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: check_version
+2024-11-02 02:36:53,498 INFO    SenderThread:29141 [dir_watcher.py:__init__():216] watching files in: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files
+2024-11-02 02:36:53,499 INFO    SenderThread:29141 [sender.py:_start_run_threads():815] run started: w390ssb7 with start time 1730479012
+2024-11-02 02:36:53,499 DEBUG   SenderThread:29141 [sender.py:send():236] send: summary
+2024-11-02 02:36:53,499 INFO    SenderThread:29141 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2024-11-02 02:36:53,500 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: check_version
+2024-11-02 02:36:53,788 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: run_start
+2024-11-02 02:36:53,802 DEBUG   HandlerThread:29141 [meta.py:__init__():35] meta init
+2024-11-02 02:36:53,802 DEBUG   HandlerThread:29141 [meta.py:__init__():49] meta init done
+2024-11-02 02:36:53,802 DEBUG   HandlerThread:29141 [meta.py:probe():209] probe
+2024-11-02 02:36:53,809 DEBUG   HandlerThread:29141 [meta.py:_setup_git():199] setup git
+2024-11-02 02:36:53,819 DEBUG   HandlerThread:29141 [meta.py:_setup_git():206] setup git done
+2024-11-02 02:36:53,819 DEBUG   HandlerThread:29141 [meta.py:_save_code():87] save code
+2024-11-02 02:36:53,822 DEBUG   HandlerThread:29141 [meta.py:_save_code():108] save code done
+2024-11-02 02:36:53,822 DEBUG   HandlerThread:29141 [meta.py:_save_patches():125] save patches
+2024-11-02 02:36:53,839 DEBUG   HandlerThread:29141 [meta.py:_save_patches():167] save patches done
+2024-11-02 02:36:53,839 DEBUG   HandlerThread:29141 [meta.py:_save_pip():53] save pip
+2024-11-02 02:36:53,839 DEBUG   HandlerThread:29141 [meta.py:_save_pip():67] save pip done
+2024-11-02 02:36:53,840 DEBUG   HandlerThread:29141 [meta.py:_save_conda():74] save conda
+2024-11-02 02:36:54,502 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/wandb-summary.json
+2024-11-02 02:36:54,502 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/conda-environment.yaml
+2024-11-02 02:36:54,502 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/requirements.txt
+2024-11-02 02:36:54,502 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/code/main.py
+2024-11-02 02:36:54,503 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/code
+2024-11-02 02:36:57,111 DEBUG   HandlerThread:29141 [meta.py:_save_conda():84] save conda done
+2024-11-02 02:36:57,111 DEBUG   HandlerThread:29141 [meta.py:probe():247] probe done
+2024-11-02 02:36:57,117 DEBUG   SenderThread:29141 [sender.py:send():236] send: files
+2024-11-02 02:36:57,117 INFO    SenderThread:29141 [sender.py:_save_file():952] saving file wandb-metadata.json with policy now
+2024-11-02 02:36:57,117 INFO    SenderThread:29141 [sender.py:_save_file():952] saving file code/main.py with policy now
+2024-11-02 02:36:57,123 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:36:57,124 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:36:57,500 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/conda-environment.yaml
+2024-11-02 02:36:57,500 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/output.log
+2024-11-02 02:36:57,500 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_created():269] file/dir created: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/wandb-metadata.json
+2024-11-02 02:36:57,616 DEBUG   SenderThread:29141 [sender.py:send():236] send: telemetry
+2024-11-02 02:36:57,648 INFO    Thread-12 :29141 [upload_job.py:push():118] Skipped uploading /tmp/tmpi58njv7gwandb/i3e8zy6t-code/main.py
+2024-11-02 02:36:58,216 INFO    Thread-11 :29141 [upload_job.py:push():138] Uploaded file /tmp/tmpi58njv7gwandb/2s4wa7xx-wandb-metadata.json
+2024-11-02 02:36:59,501 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/output.log
+2024-11-02 02:37:12,617 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:37:12,617 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:37:22,216 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:37:24,509 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/config.yaml
+2024-11-02 02:37:28,101 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:37:28,101 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:37:43,484 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:37:43,484 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:37:52,579 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:37:58,881 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:37:58,882 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:38:14,298 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:38:14,299 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:38:22,973 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:38:29,736 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:38:29,736 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:38:45,188 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:38:45,188 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:38:53,333 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:39:00,736 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:39:00,737 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:39:16,227 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:39:16,227 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:39:23,708 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:39:31,695 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:39:31,695 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:39:47,243 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:39:47,243 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:39:54,049 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:40:02,726 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:40:02,726 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:40:18,323 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:40:18,324 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:40:24,433 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:40:33,776 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:40:33,777 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:40:49,308 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:40:49,308 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:40:54,807 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:41:04,730 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:41:04,731 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:41:20,302 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:41:20,302 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:41:25,206 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:41:35,687 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:41:35,687 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:41:51,172 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:41:51,172 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:41:55,581 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:42:06,800 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:42:06,800 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:42:22,255 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:42:22,255 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:42:25,961 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:42:37,747 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:42:37,747 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:42:53,204 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:42:53,204 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:42:56,321 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:43:08,721 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:43:08,721 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:43:24,193 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:43:24,193 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:43:26,695 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:43:39,611 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:43:39,611 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:43:55,193 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:43:55,193 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:43:57,076 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:44:10,637 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: stop_status
+2024-11-02 02:44:10,637 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: stop_status
+2024-11-02 02:44:22,382 WARNING MainThread:29141 [internal.py:wandb_internal():153] Internal process interrupt: 1
+2024-11-02 02:44:22,424 DEBUG   SenderThread:29141 [sender.py:send():236] send: telemetry
+2024-11-02 02:44:23,653 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/output.log
+2024-11-02 02:44:24,606 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:24,607 DEBUG   SenderThread:29141 [sender.py:send():236] send: exit
+2024-11-02 02:44:24,607 INFO    SenderThread:29141 [sender.py:send_exit():372] handling exit code: 255
+2024-11-02 02:44:24,607 INFO    SenderThread:29141 [sender.py:send_exit():374] handling runtime: 450
+2024-11-02 02:44:24,608 INFO    SenderThread:29141 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2024-11-02 02:44:24,608 INFO    SenderThread:29141 [sender.py:send_exit():380] send defer
+2024-11-02 02:44:24,608 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:24,609 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:24,609 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 0
+2024-11-02 02:44:24,609 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:24,609 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 0
+2024-11-02 02:44:24,609 INFO    SenderThread:29141 [sender.py:transition_state():393] send defer: 1
+2024-11-02 02:44:24,610 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:24,610 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 1
+2024-11-02 02:44:24,653 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/output.log
+2024-11-02 02:44:24,654 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/wandb-summary.json
+2024-11-02 02:44:24,701 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:24,701 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 1
+2024-11-02 02:44:24,701 INFO    SenderThread:29141 [sender.py:transition_state():393] send defer: 2
+2024-11-02 02:44:24,701 DEBUG   SenderThread:29141 [sender.py:send():236] send: stats
+2024-11-02 02:44:24,702 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:24,702 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 2
+2024-11-02 02:44:24,702 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:24,702 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 2
+2024-11-02 02:44:24,702 INFO    SenderThread:29141 [sender.py:transition_state():393] send defer: 3
+2024-11-02 02:44:24,703 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:24,703 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 3
+2024-11-02 02:44:24,703 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:24,703 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 3
+2024-11-02 02:44:24,703 INFO    SenderThread:29141 [sender.py:transition_state():393] send defer: 4
+2024-11-02 02:44:24,703 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:24,703 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 4
+2024-11-02 02:44:24,703 DEBUG   SenderThread:29141 [sender.py:send():236] send: summary
+2024-11-02 02:44:24,704 INFO    SenderThread:29141 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2024-11-02 02:44:24,704 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:24,704 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 4
+2024-11-02 02:44:24,704 INFO    SenderThread:29141 [sender.py:transition_state():393] send defer: 5
+2024-11-02 02:44:24,705 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:24,705 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 5
+2024-11-02 02:44:24,705 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:24,705 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 5
+2024-11-02 02:44:24,712 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:25,129 INFO    SenderThread:29141 [sender.py:transition_state():393] send defer: 6
+2024-11-02 02:44:25,129 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:25,130 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:25,130 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 6
+2024-11-02 02:44:25,130 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:25,130 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 6
+2024-11-02 02:44:25,130 INFO    SenderThread:29141 [dir_watcher.py:finish():353] shutting down directory watcher
+2024-11-02 02:44:25,231 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:25,654 INFO    Thread-7  :29141 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/config.yaml
+2024-11-02 02:44:25,655 INFO    SenderThread:29141 [dir_watcher.py:_on_file_modified():286] file/dir modified: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/wandb-summary.json
+2024-11-02 02:44:25,655 INFO    SenderThread:29141 [dir_watcher.py:finish():383] scan: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files
+2024-11-02 02:44:25,655 INFO    SenderThread:29141 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/wandb-summary.json wandb-summary.json
+2024-11-02 02:44:25,655 INFO    SenderThread:29141 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/requirements.txt requirements.txt
+2024-11-02 02:44:25,656 INFO    SenderThread:29141 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/conda-environment.yaml conda-environment.yaml
+2024-11-02 02:44:25,665 INFO    SenderThread:29141 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/output.log output.log
+2024-11-02 02:44:25,665 INFO    SenderThread:29141 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/wandb-metadata.json wandb-metadata.json
+2024-11-02 02:44:25,665 INFO    SenderThread:29141 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/config.yaml config.yaml
+2024-11-02 02:44:25,674 INFO    SenderThread:29141 [dir_watcher.py:finish():397] scan save: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/code/main.py code/main.py
+2024-11-02 02:44:25,678 INFO    SenderThread:29141 [sender.py:transition_state():393] send defer: 7
+2024-11-02 02:44:25,679 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:25,679 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:25,680 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 7
+2024-11-02 02:44:25,680 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:25,680 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 7
+2024-11-02 02:44:25,680 INFO    SenderThread:29141 [file_pusher.py:finish():171] shutting down file pusher
+2024-11-02 02:44:25,781 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:25,781 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:25,883 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:25,883 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:25,985 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:25,985 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,087 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:26,087 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,189 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:26,189 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,291 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:26,292 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,393 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:26,394 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,495 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:26,496 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,597 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:26,597 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,699 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:26,699 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,714 INFO    Thread-17 :29141 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/config.yaml
+2024-11-02 02:44:26,728 INFO    Thread-14 :29141 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/requirements.txt
+2024-11-02 02:44:26,740 INFO    Thread-16 :29141 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/output.log
+2024-11-02 02:44:26,746 INFO    Thread-13 :29141 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/wandb-summary.json
+2024-11-02 02:44:26,753 INFO    Thread-15 :29141 [upload_job.py:push():138] Uploaded file /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/files/conda-environment.yaml
+2024-11-02 02:44:26,801 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:26,801 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,902 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:26,903 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:26,953 INFO    Thread-6 (_thread_body):29141 [sender.py:transition_state():393] send defer: 8
+2024-11-02 02:44:26,954 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:26,954 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 8
+2024-11-02 02:44:26,954 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:26,955 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 8
+2024-11-02 02:44:27,004 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:27,770 INFO    SenderThread:29141 [sender.py:transition_state():393] send defer: 9
+2024-11-02 02:44:27,770 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:27,771 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:27,771 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 9
+2024-11-02 02:44:27,771 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:27,771 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 9
+2024-11-02 02:44:27,771 INFO    SenderThread:29141 [sender.py:transition_state():393] send defer: 10
+2024-11-02 02:44:27,772 DEBUG   SenderThread:29141 [sender.py:send():236] send: final
+2024-11-02 02:44:27,772 DEBUG   SenderThread:29141 [sender.py:send():236] send: footer
+2024-11-02 02:44:27,772 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: defer
+2024-11-02 02:44:27,773 INFO    HandlerThread:29141 [handler.py:handle_request_defer():163] handle defer: 10
+2024-11-02 02:44:27,773 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: defer
+2024-11-02 02:44:27,773 INFO    SenderThread:29141 [sender.py:send_request_defer():389] handle sender defer: 10
+2024-11-02 02:44:27,872 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: poll_exit
+2024-11-02 02:44:27,872 DEBUG   SenderThread:29141 [sender.py:send_request():250] send_request: poll_exit
+2024-11-02 02:44:27,872 INFO    SenderThread:29141 [file_pusher.py:join():176] waiting for file pusher
+2024-11-02 02:44:28,660 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: sampled_history
+2024-11-02 02:44:28,661 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: get_summary
+2024-11-02 02:44:28,662 DEBUG   HandlerThread:29141 [handler.py:handle_request():140] handle_request: shutdown
+2024-11-02 02:44:28,662 INFO    HandlerThread:29141 [handler.py:finish():806] shutting down handler
+2024-11-02 02:44:28,772 INFO    WriterThread:29141 [datastore.py:close():279] close: /home/cong/hungvv/SatPromptedVit/wandb/run-20241102_023652-w390ssb7/run-w390ssb7.wandb
+2024-11-02 02:44:29,559 INFO    SenderThread:29141 [sender.py:finish():1114] shutting down sender
+2024-11-02 02:44:29,559 INFO    SenderThread:29141 [file_pusher.py:finish():171] shutting down file pusher
+2024-11-02 02:44:29,559 INFO    SenderThread:29141 [file_pusher.py:join():176] waiting for file pusher
+2024-11-02 02:44:29,560 INFO    MainThread:29141 [internal.py:handle_exit():80] Internal process exited
