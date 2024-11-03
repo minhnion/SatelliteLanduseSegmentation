@@ -2,6 +2,9 @@ torch
 torchvision
 wandb
 rasterio
-PIL
-python-cv2
+opencv-python
 einops
+tqdm
+scikit-learn
+matplotlib
+python-dotenv

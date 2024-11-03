@@ -16,8 +16,6 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
     train_losses, val_losses, val_precisions, val_recalls = [], [], [] , []
 
     for epoch in range(num_epochs):
-        if (epoch == 0):
-            break
         print(f"Epoch: {epoch+1}")
         model.train()
 
