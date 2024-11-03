@@ -3,3 +3,4 @@ dataset
 *.env
 wandb
 log
+/__pycache__/
