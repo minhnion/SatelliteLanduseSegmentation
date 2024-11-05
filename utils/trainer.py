@@ -3,15 +3,18 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from sklearn.metrics import precision_score, recall_score
+import wandb 
 
 from utils.logging_utils import plot_metrics, plot_predictions
 
-def train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=100, save_path='best_model.pth', early_stop=True, patience=20):
+def train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=100, save_path='best_model.pth', image_dir = None, early_stop=True, patience=20):
 
     best_val_loss, best_train_loss, best_model_val_precision, best_model_val_recall = float('inf'), float('inf'), float('inf'), float('inf')
     early_stop_counter = 0
     running_loss = 0.0
     best_model_wts = None
+
+    wandb.watch(model, log='all', log_freq=100)
 
     train_losses, val_losses, val_precisions, val_recalls = [], [], [] , []
 
@@ -86,7 +89,7 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
         val_recalls.append(recall)
 
         print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {epoch_train_loss:.4f}, Val Loss: {epoch_val_loss:.4f}, Val Precision: {precision:.4f}, Val Recall: {recall:.4f}')
-
+        
         for i, class_name in enumerate(classes):
             if (i==0):
                 continue
@@ -106,6 +109,9 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
         for class_name, metrics in class_idx_to_pc.items():
             log_data[f"{class_name}_precision"] = metrics[0]
             log_data[f"{class_name}_recall"] = metrics[1]
+
+        # Log to wandb 
+        wandb.log("Training log", log_data)
 
         # Save the model if the validation loss is the best we've seen so far
         if epoch_val_loss < best_val_loss:
@@ -134,4 +140,4 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
     print(f"Best model has train loss: {best_train_loss}, val loss: {best_val_loss} \nprecision: {best_model_val_precision}, recall: {best_model_val_recall}")
 
     # Plot the metrics
-    plot_metrics(train_losses, val_losses, val_precisions, val_recalls)
+    plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_dir=image_dir)

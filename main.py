@@ -5,6 +5,7 @@ from utils.parser import parse_args
 from data.dataloader import load_dataloader
 from model.ViT.model import UNet
 from model.LinkNet.model import LinkNet
+from model.PromptedVitUnet.model import PromptedVitUnet
 import torch.optim as optim
 import torch.nn as nn
 from datetime import datetime
@@ -46,11 +47,13 @@ if __name__ == "__main__":
             name=f'model:{args.model}_epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}'
         )
 
-        timestamp = int(datetime.now().timestamp())
-        weight_path = f"./log/weights/model:{args.model}_epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_timestamp:{timestamp}/"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        weight_path = f"./log/weights/model:{args.model}_epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_datetime:{timestamp}/"
+        image_path =  f"./log/images/model:{args.model}_epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_datetime:{timestamp}/"
         if not os.path.exists(weight_path):
             os.makedirs(weight_path)
-
+        if not os.path.exists(image_path):
+            os.makedirs(image_path)
 
         classes = ['unidentifiable', 'forest', 'rice_field', 'water', 'residential']
         n_channels = 5
@@ -62,19 +65,20 @@ if __name__ == "__main__":
         if args.model == 'linknet':
             model = LinkNet(n_classes=n_classes, n_channels=n_channels).to(device)
         elif args.model == 'ViTUnet':
-            model = UNet(n_classes=n_classes, n_channels=n_channels, device=device).to(device)
-        # elif args.model == 'PromptedViTUnet':
-        #     model = PromptedViTUNet(n_classes=n_classes, n_channels=n_channels, prompted=True).to(device)
+            model = UNet(n_classes=n_classes, n_channels=n_channels).to(device)
+        elif args.model == 'PromptedViTUnet':
+            model = PromptedVitUnet(n_classes=n_classes, n_channels=n_channels).to(device)
 
         optimizer = optim.Adam(model.parameters(), lr=args.lr)
         criterion = nn.CrossEntropyLoss(ignore_index=0)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
-
-        train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'best_weight.pth', early_stop=True, patience=20)
+        torch.cuda.empty_cache()
+        
+        train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'best_weight.pth', image_path=image_path, early_stop=True, patience=20)
 
         run.finish()
 
-        evaluate_on_test_set(model, test_loader, classes)
+        evaluate_on_test_set(model, test_loader, classes, image_path=image_path)
     except Exception as e:
         print(f"An error occurred: {e}")
         raise

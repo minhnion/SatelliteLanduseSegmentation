@@ -4,7 +4,7 @@ import numpy as np
 
 from utils.image_utils import *
 
-def plot_metrics(train_losses, val_losses, val_precisions, val_recalls):
+def plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_dir=None):
     epochs = range(1, len(train_losses) + 1)
     plt.figure(figsize=(12, 10))
 
@@ -28,9 +28,10 @@ def plot_metrics(train_losses, val_losses, val_precisions, val_recalls):
     plt.legend()
 
     plt.tight_layout()
+    plt.savefig(image_dir + 'train_result.png')
     plt.show()
 
-def plot_predictions(inputs, outputs, masks, epoch, num_samples=5):
+def plot_predictions(inputs, outputs, masks, epoch, num_samples=5, image_dir=None):
     # Convert tensors to numpy arrays
     inputs = inputs.cpu().numpy().astype(np.int64)
     outputs = torch.argmax(outputs, dim=1).cpu().numpy()
@@ -62,4 +63,5 @@ def plot_predictions(inputs, outputs, masks, epoch, num_samples=5):
         axs[2].axis('off')
 
         plt.tight_layout()  # Adjust layout to prevent overlap
+        plt.savefig(image_dir+ f"{i + 1}.png")
         plt.show()

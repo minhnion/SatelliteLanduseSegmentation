@@ -5,7 +5,7 @@ from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
 from layers.transformer_layers import pair, Transformer
-from layers.unet_layers import * 
+from layers.unet_layers import *
 
 def init_weights_he(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -60,42 +60,33 @@ class ViT(nn.Module):
         x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
         x = self.to_latent(x)
         return x
-    
+
 class UNet(nn.Module):
-    def __init__(self, n_classes, n_channels=3, bilinear=True, device=None):
+    def __init__(self, n_classes, n_channels=3, bilinear=True):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        # Encoder (Contracting Path) with reduced channels
-        self.inc = DoubleConv(n_channels, 16).to(device)      # Reduced from 32 to 16
-        self.down1 = Down(16, 32).to(device)                   # Reduced from 64 to 32
-        self.down2 = Down(32, 64).to(device)                   # Reduced from 128 to 64
-        self.down3 = Down(64, 128).to(device)                  # Reduced from 256 to 128
+        # Encoder (Contracting Path)
+        self.inc = DoubleConv(n_channels, 64)
+        self.down1 = Down(64, 128)
+        self.down2 = Down(128, 256)
+        self.down3 = Down(256, 512)
         factor = 2 if bilinear else 1
-        self.down4 = Down(128, 256 // factor).to(device)       # Reduced from 512 to 256
+        self.down4 = Down(512, 1024 // factor)
 
-        # Simplified Vision Transformer block
-        self.vit = ViT(image_size=16,               # Reduced image size for ViT input
-                       patch_size=4,                # Smaller patch size
-                       dim=256,                     # Reduced from 512 to 256
-                       depth=1,                     # Reduced from 2 to 1
-                       heads=8,                     # Reduced from 16 to 8
-                       mlp_dim=64,                  # Reduced MLP dimension
-                       channels=128).to(device)                # Match input channels to last encoder layer
-        self.vit_conv = nn.Conv2d(16, 256, kernel_size=1)  # Adjusted to 256 output channels
-        self.vit_linear = nn.Linear(16, 512)        # Adjusted linear layer
+        # Vision Transformer block
+        self.vit = ViT(image_size = 32,patch_size = 8,dim = 2048, depth = 2, heads = 16,mlp_dim = 12,channels = 512)
+        self.vit_conv = nn.Conv2d(32,512,kernel_size = 1,padding = 0)
+        self.vit_linear = nn.Linear(64,1024)
 
-        # Decoder (Expanding Path) with reduced channels
-        self.up1 = Up(256, 128 // factor, bilinear).to(device) # Reduced from 512 to 256
-        self.up2 = Up(128, 64 // factor, bilinear).to(device)  # Reduced from 256 to 128
-        self.up3 = Up(64, 32 // factor, bilinear).to(device)   # Reduced from 128 to 64
-        self.up4 = Up(32, 16, bilinear).to(device)             # Reduced from 64 to 32
-        self.outc = OutConv(16, n_classes).to(device)          # Match output layer to reduced channels
-        
-        # Apply He initialization
-        self.apply(init_weights_he)
+        # Decoder (Expanding Path)
+        self.up1 = Up(1024, 512 // factor, bilinear)
+        self.up2 = Up(512, 256 // factor, bilinear)
+        self.up3 = Up(256, 128 // factor, bilinear)
+        self.up4 = Up(128, 64, bilinear)
+        self.outc = OutConv(64, n_classes)
 
     def forward(self, x):
         # Encoder (Contracting Path)
@@ -105,13 +96,12 @@ class UNet(nn.Module):
         x4 = self.down3(x3)
         x5 = self.down4(x4)
 
-        # Applying Vision Transformer with modified dimensions
+        #applying Vision Transformer
         x6 = self.vit(x5)
-        x6 = torch.reshape(x6, (-1, 16, 4, 4))
+        x6 = torch.reshape(x6,(-1,32,8,8))
         x7 = self.vit_conv(x6)
-        x7 = torch.reshape(x7, (-1, 256, 16))
-        x8 = self.vit_linear(x7)
-        x9 = torch.reshape(x8, (-1, 128, 32, 32))   # Adjusted final ViT output shape
+        x8 = self.vit_linear(torch.reshape(x7,(-1,512,64)))
+        x9 = torch.reshape(x8,(-1,512,32,32))
 
         # Decoder (Expanding Path)
         x = self.up1(x9, x4)
