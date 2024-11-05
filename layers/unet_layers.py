@@ -55,7 +55,6 @@ class Up(nn.Module):
             self.up = nn.ConvTranspose2d(in_channels , in_channels // 2, kernel_size=2, stride=2)
             self.conv = DoubleConv(in_channels, out_channels)
 
-
     def forward(self, x1, x2):
         x1 = self.up(x1)
         # Calculate the difference in size between the input and the skip connection
@@ -77,3 +76,4 @@ class OutConv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
+

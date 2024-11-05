@@ -56,10 +56,11 @@ if __name__ == "__main__":
             os.makedirs(image_path)
 
         classes = ['unidentifiable', 'forest', 'rice_field', 'water', 'residential']
+        root_dir = '/mnt/henryng/augment_images_dataset/augment_images_dataset'
         n_channels = 5
         n_classes = len(classes)
 
-        train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size)
+        train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, root_dir=root_dir)
         model = None
 
         if args.model == 'linknet':

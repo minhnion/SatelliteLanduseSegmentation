@@ -4,8 +4,7 @@ from torch.utils.data import DataLoader
 from data.data import LandCoverDataset
 from utils.data_utils import ResizeAndToClassTransform
 
-def load_dataloader(batch_size):
-    root_dir = "dataset/thanhhoa"
+def load_dataloader(batch_size ,root_dir):
     size = (256, 256)
     transform = ResizeAndToClassTransform(size=size, augment=True)
 
