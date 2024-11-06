@@ -72,13 +72,11 @@ class PromptedViT(nn.Module):
         return x
 
 class PromptedVitUnet(nn.Module):
-    def __init__(self, n_classes, n_channels=3, bilinear=True, prompt_dim=128, depth=8, heads=4):
+    def __init__(self, n_classes, n_channels=3, bilinear=True, prompt_dim=128):
         super(PromptedVitUnet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
-        self.heads = heads 
-        self.depth = depth 
 
         # Encoder (Contracting Path)
         self.inc = DoubleConv(n_channels, 64)
@@ -94,8 +92,8 @@ class PromptedVitUnet(nn.Module):
             patch_size=8,
             dim=2048,  # Total dimension expected by the transformer
             prompt_dim=prompt_dim,
-            depth=depth,
-            heads=heads,
+            depth=2,
+            heads=16,
             mlp_dim=12,
             pool='cls',
             channels=512,

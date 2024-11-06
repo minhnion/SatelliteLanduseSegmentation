@@ -56,7 +56,7 @@ if __name__ == "__main__":
             os.makedirs(image_path)
 
         classes = ['unidentifiable', 'forest', 'rice_field', 'water', 'residential']
-        root_dir = '/mnt/henryng/augment_images_dataset/augment_images_dataset'
+        root_dir = '/mnt/henryng/land-use/full_complete_dataset_augment/full_complete_dataset_renamed_augmented_dataset'
         n_channels = 5
         n_classes = len(classes)
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
         torch.cuda.empty_cache()
         
-        train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'best_weight.pth', image_path=image_path, early_stop=True, patience=20)
+        train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'best_weight.pth', image_dir=image_path, early_stop=True, patience=20)
 
         run.finish()
 

@@ -54,7 +54,7 @@ def evaluate_on_test_set(model, test_loader, classes, image_dir=None):
         log_test[f'recall_{class_name}'] = recall_per_class[i]
 
     # log test
-    wandb.log('Test log', log_test)
+    wandb.log({'Test log': log_test})
 
     # Confusion Matrix
     plt.figure(figsize=(12, 8))

@@ -23,6 +23,7 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
         model.train()
 
         class_idx_unidentifiable = classes.index('unidentifiable')
+        print('Unidentifiable class id:', class_idx_unidentifiable)
 
         for i, (inputs, masks, image_paths, mask_paths) in enumerate(train_loader):
             inputs, masks = inputs.to(device), masks.to(device)
@@ -31,7 +32,7 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
             loss = criterion(outputs, masks)
             loss.backward()
             optimizer.step()
-            running_loss += loss.item() * inputs.size(0)
+            running_loss += loss.item() 
 
         epoch_train_loss = running_loss / len(train_loader.dataset)
         train_losses.append(epoch_train_loss)
@@ -58,8 +59,8 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
                 inputs, masks = inputs.to(device), masks.to(device)
                 outputs = model(inputs)
                 loss = criterion(outputs, masks)
-                val_running_loss += loss.item() * inputs.size(0)
-
+                val_running_loss += loss.item() 
+                
                 val_inputs.append(inputs)
                 val_outputs.append(outputs)
                 val_masks.append(masks)
@@ -111,7 +112,7 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
             log_data[f"{class_name}_recall"] = metrics[1]
 
         # Log to wandb 
-        wandb.log("Training log", log_data)
+        wandb.log( {"Train log": log_data})
 
         # Save the model if the validation loss is the best we've seen so far
         if epoch_val_loss < best_val_loss:
