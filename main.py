@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
         run = wandb.init(
             entity='mingixpt-hust',
-            project='landuse-full-data',
+            project='landuse-fixed',
             config=CFG,
             save_code=True,
             job_type='train',
@@ -56,7 +56,7 @@ if __name__ == "__main__":
             os.makedirs(image_path)
 
         classes = ['unidentifiable', 'forest', 'rice_field', 'water', 'residential']
-        root_dir = '/mnt/henryng/land-use/full_complete_dataset_augment/full_complete_dataset_renamed_augmented_dataset'
+        root_dir = '/mnt/henryng/sentinel_dataset_cut256_filtered'
         n_channels = 5
         n_classes = len(classes)
 
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         elif args.model == 'ViTUnet':
             model = UNet(n_classes=n_classes, n_channels=n_channels).to(device)
         elif args.model == 'PromptedViTUnet':
-            model = PromptedVitUnet(n_classes=n_classes, n_channels=n_channels).to(device)
+            model = PromptedVitUnet(n_classes=n_classes, n_channels=n_channels, depth=6, heads=4, dropout=0.3).to(device)
 
         optimizer = optim.Adam(model.parameters(), lr=args.lr)
         criterion = nn.CrossEntropyLoss(ignore_index=0)
@@ -77,9 +77,9 @@ if __name__ == "__main__":
         
         train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'best_weight.pth', image_dir=image_path, early_stop=True, patience=20)
 
+        evaluate_on_test_set(model, test_loader, classes, image_path=image_path)
         run.finish()
 
-        evaluate_on_test_set(model, test_loader, classes, image_path=image_path)
     except Exception as e:
         print(f"An error occurred: {e}")
         raise

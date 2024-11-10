@@ -11,7 +11,6 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
 
     best_val_loss, best_train_loss, best_model_val_precision, best_model_val_recall = float('inf'), float('inf'), float('inf'), float('inf')
     early_stop_counter = 0
-    running_loss = 0.0
     best_model_wts = None
 
     wandb.watch(model, log='all', log_freq=100)
@@ -20,6 +19,7 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
 
     for epoch in range(num_epochs):
         print(f"Epoch: {epoch+1}")
+        running_loss = 0.0
         model.train()
 
         class_idx_unidentifiable = classes.index('unidentifiable')
@@ -33,8 +33,9 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
             loss.backward()
             optimizer.step()
             running_loss += loss.item() 
-
-        epoch_train_loss = running_loss / len(train_loader.dataset)
+            
+        epoch_train_loss = running_loss / len(train_loader)
+        scheduler.step(epoch_train_loss)
         train_losses.append(epoch_train_loss)
 
         # Validate the model
@@ -76,7 +77,7 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
                 all_preds_each_cls.extend(preds)
                 all_labels_each_cls.extend(labels)
 
-        epoch_val_loss = val_running_loss / len(val_loader.dataset)
+        epoch_val_loss = val_running_loss / len(val_loader)
         val_losses.append(epoch_val_loss)
 
         # Compute precision, recall, and IoU for each class
@@ -106,7 +107,6 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
             "val_recall": recall,
         }
 
-
         for class_name, metrics in class_idx_to_pc.items():
             log_data[f"{class_name}_precision"] = metrics[0]
             log_data[f"{class_name}_recall"] = metrics[1]
@@ -127,13 +127,11 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
         else:
             early_stop_counter += 1
 
-        scheduler.step(epoch_val_loss)
-
         if early_stop and early_stop_counter >= patience:
             print(f"Early stopping at epoch {epoch + 1}")
             break
 
-            # Load the best model weights
+    # Load the best model weights
     if best_model_wts:
         model.load_state_dict(best_model_wts)
     else:

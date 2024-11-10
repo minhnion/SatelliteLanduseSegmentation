@@ -41,3 +41,4 @@ class LandCoverDataset(Dataset):
 
         # Return image, mask, and their corresponding file paths
         return image, mask, image_path, mask_path
+    
