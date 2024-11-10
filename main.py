@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
         run = wandb.init(
             entity='mingixpt-hust',
-            project='landuse-fixed',
+            project='landuse-sentinel-dataset',
             config=CFG,
             save_code=True,
             job_type='train',
@@ -56,8 +56,8 @@ if __name__ == "__main__":
             os.makedirs(image_path)
 
         classes = ['unidentifiable', 'forest', 'rice_field', 'water', 'residential']
-        root_dir = '/mnt/henryng/sentinel_dataset_cut256_filtered'
-        n_channels = 5
+        root_dir = '/mnt/henryng/sentinel_dataset'
+        n_channels = 4 # for new dataset, n_channels = 4
         n_classes = len(classes)
 
         train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, root_dir=root_dir)
@@ -75,9 +75,9 @@ if __name__ == "__main__":
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
         torch.cuda.empty_cache()
         
-        train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'best_weight.pth', image_dir=image_path, early_stop=True, patience=20)
+        trained_model = train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'best_weight.pth', image_dir=image_path, early_stop=True, patience=20)
 
-        evaluate_on_test_set(model, test_loader, classes, image_path=image_path)
+        evaluate_on_test_set(trained_model, test_loader, classes, image_dir=image_path)
         run.finish()
 
     except Exception as e:

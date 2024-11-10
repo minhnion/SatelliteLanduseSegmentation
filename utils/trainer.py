@@ -140,3 +140,4 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
 
     # Plot the metrics
     plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_dir=image_dir)
+    return model

@@ -8,7 +8,7 @@ from layers.transformer_layers import *
 from layers.unet_layers import * 
 
 # Define the PromptedViT class
-class PromptedViT(nn.Module):
+class PromptedViTRegionAtt(nn.Module):
     def __init__(self, *, image_size, patch_size, dim, prompt_dim, depth, heads, mlp_dim, pool='cls', channels=512, dim_head=64, dropout=0., emb_dropout=0.):
         super().__init__()
         assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
@@ -71,9 +71,9 @@ class PromptedViT(nn.Module):
         x = self.to_latent(x)
         return x
 
-class PromptedVitUnet(nn.Module):
+class PromptedVitRegionAttUnet(nn.Module):
     def __init__(self, n_classes, n_channels=3, bilinear=True, prompt_dim=128):
-        super(PromptedVitUnet, self).__init__()
+        super(PromptedVitRegionAttUnet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear

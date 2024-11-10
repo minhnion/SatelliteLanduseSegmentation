@@ -1,7 +1,7 @@
 from sklearn.metrics import precision_score, recall_score, confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 import torch
-import wandb 
+import wandb
 
 from utils.logging_utils import plot_predictions
 
@@ -10,6 +10,8 @@ def evaluate_on_test_set(model, test_loader, classes, image_dir=None):
     model.eval()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)  # Ensure the model is on the correct device
+
+    class_idx_unidentifiable = classes.index('unidentifiable')
 
     all_labels = []
     all_preds = []
@@ -20,8 +22,12 @@ def evaluate_on_test_set(model, test_loader, classes, image_dir=None):
         for inputs, masks, _a, _b in test_loader:
             inputs = inputs.to(device)  # Move inputs to the same device as the model
             outputs = model(inputs)
-            preds = torch.argmax(outputs, dim=1).cpu().numpy().flatten()
-            labels = masks.cpu().numpy().flatten()
+            preds = torch.argmax(outputs, dim=1).cpu().numpy()
+            labels = masks.cpu().numpy()
+            
+            valid_mask = labels != class_idx_unidentifiable  # Mask to ignore "unidentifiable" class
+            preds = preds[valid_mask]
+            labels = labels[valid_mask]
 
             plot_predictions(inputs, outputs, masks, epoch=1, num_samples='all', image_dir = image_dir)
 
@@ -39,7 +45,7 @@ def evaluate_on_test_set(model, test_loader, classes, image_dir=None):
 
     log_test = {
         'precision': precision,
-        'recall': recall 
+        'recall': recall
     }
 
     # Precision and recall for each class
@@ -63,4 +69,4 @@ def evaluate_on_test_set(model, test_loader, classes, image_dir=None):
     disp.plot(cmap=plt.cm.Blues)
     plt.title("Normalized Confusion Matrix")
     wandb.log({"Confusion-matrix plot": wandb.Image(plt)})
-    # plt.show()
+    plt.show()

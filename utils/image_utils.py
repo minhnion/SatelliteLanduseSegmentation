@@ -21,12 +21,12 @@ def class_to_rgb(class_mask):
 
     return rgb_mask
 
-def open_tif_image(tiff_file, channel_num=5):
+def open_tif_image(tiff_file, channel_num=4):
     try:
         with rasterio.open(tiff_file) as src:
             # Check the number of bands in the file
             num_bands = src.count
-#             print(f"{tiff_file} has {num_bands} bands.")
+            # print(f"{tiff_file} has {num_bands} bands.")
 
             # Only proceed if the file has at least the required number of bands
             if num_bands < channel_num:
