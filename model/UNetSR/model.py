@@ -7,6 +7,9 @@ from einops.layers.torch import Rearrange
 from layers.transformer_layers import pair, Transformer
 from layers.unet_layers import *
 
+from model.ESRT.model import ESRT, BasicConv
+from model.ESRT.common import default_conv, Upsampler
+
 def init_weights_he(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
         nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -61,12 +64,14 @@ class ViT(nn.Module):
         x = self.to_latent(x)
         return x
 
-class UNet(nn.Module):
-    def __init__(self, n_classes, n_channels=3, depth=8, heads=4, dropout=0.2, bilinear=True):
-        super(UNet, self).__init__()
+class UNetSR(nn.Module):
+    def __init__(self, n_classes, n_channels=3, bilinear=True, sr_cat=False, sr_pretrained=True):
+        super(UNetSR, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
+        self.sr_cat = sr_cat
+        self.sr_pretrained = sr_pretrained
 
         # Encoder (Contracting Path)
         self.inc = DoubleConv(n_channels, 64)
@@ -76,8 +81,41 @@ class UNet(nn.Module):
         factor = 2 if bilinear else 1
         self.down4 = Down(512, 1024 // factor)
 
+        # Super Resolution block
+        self.down_sr1 = Down(32, 64)
+        self.down_sr2 = Down(64, 128)
+        self.down_sr3 = Down(128, 256)
+        self.down_sr4 = Down(256, 512)
+        self.down_cat = nn.Conv2d(1024, 512, kernel_size=1)
+
+        self.down_encode = Down(512, 512) # SR Encode
+
+        if self.sr_pretrained:
+            self.sr = ESRT(n_blocks=1, n_channels=4, upscale=2, encoder_only=True)
+            checkpoint_path = 'model/ESRT/epoch_10.pth'
+            checkpoint = torch.load(checkpoint_path)
+            self.sr.load_state_dict(checkpoint, strict=False)
+
+            modules_head = [default_conv(n_channels, 32, 3)]
+            self.sr.head = nn.Sequential(*modules_head)
+
+            modules_tail = [
+                Upsampler(default_conv, scale=2 , n_feats=32, act=False),
+                default_conv(in_channels=32, out_channels=n_channels, kernel_size=3)
+            ]
+
+            up = nn.Sequential(Upsampler(default_conv,scale=2,n_feats=32,act=False),
+                              BasicConv(32, n_channels,kernel_size=3,stride=1,padding=1))
+
+            self.sr.up = up
+            self.sr.tail = nn.Sequential(*modules_tail)
+            # self.sr.freeze_layers(freeze_head=False, freeze_body=True, freeze_tail=False)
+
+        else:
+            self.sr = ESRT(n_blocks=1, n_channels=n_channels, upscale=2, encoder_only=True)
+
         # Vision Transformer block
-        self.vit = ViT(image_size = 32,patch_size = 8,dim = 2048, depth = depth, heads = heads,mlp_dim = 12,channels = 512, dropout=dropout, emb_dropout=dropout)
+        self.vit = ViT(image_size = 32,patch_size = 8,dim = 2048, depth = 2, heads = 16,mlp_dim = 12,channels = 512)
         self.vit_conv = nn.Conv2d(32,512,kernel_size = 1,padding = 0)
         self.vit_linear = nn.Linear(64,1024)
 
@@ -89,7 +127,6 @@ class UNet(nn.Module):
         self.outc = OutConv(64, n_classes)
 
     def forward(self, x):
-        # Encoder (Contracting Path)
         x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
@@ -97,8 +134,21 @@ class UNet(nn.Module):
         x5 = self.down4(x4)
         # print(x5.shape)
 
+        # SR Path
+        x_sr = self.sr(x)
+        x_sr1 = self.down_sr1(x_sr)
+        x_sr2 = self.down_sr2(x_sr1)
+        x_sr3 = self.down_sr3(x_sr2)
+        x_sr4 = self.down_sr4(x_sr3)
+        if self.sr_cat:
+            x_cat = torch.cat((x5, x_sr4), dim=1)
+            x_before_vit = self.down_cat(x_cat)
+        else:
+            x_before_vit = x5 + x_sr4
+        # print(x_before_vit.shape)
+
         #applying Vision Transformer
-        x6 = self.vit(x5)
+        x6 = self.vit(x_before_vit)
         x6 = torch.reshape(x6,(-1,32,8,8))
         x7 = self.vit_conv(x6)
         x8 = self.vit_linear(torch.reshape(x7,(-1,512,64)))

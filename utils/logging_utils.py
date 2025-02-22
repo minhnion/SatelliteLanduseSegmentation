@@ -31,9 +31,9 @@ def plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_di
     plt.savefig(image_dir + 'train_result.png')
     plt.show()
 
-def plot_predictions(inputs, outputs, masks, epoch, num_samples=5, image_dir=None):
+def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, num_samples=5, image_dir=None):
     # Convert tensors to numpy arrays
-    inputs = inputs.cpu().numpy().astype(np.int64)
+    inputs = inputs.cpu().numpy()
     outputs = torch.argmax(outputs, dim=1).cpu().numpy()
     if not isinstance(masks, np.ndarray):
         masks = masks.cpu().numpy()
@@ -48,7 +48,14 @@ def plot_predictions(inputs, outputs, masks, epoch, num_samples=5, image_dir=Non
         axs[0].set_title(f'Input {i+1}')
         image = inputs[i].transpose(1, 2, 0)  # Convert CHW to HWC
         image = image[:, :, :3]
-        image = (image / np.max(image))  # Normalize for display
+        # image = (image * 255).astype(np.int64)
+        divise_factor = 1
+        if np.issubdtype(image.dtype, np.integer):
+            max_value = np.max(image)
+            divise_factor = 2 ** int(np.ceil(np.log2(max_value)))  # Normalize for display
+        else:
+            divise_factor = np.max(image)
+        image = (image / divise_factor).astype(float)
         axs[0].imshow(image)
         axs[0].axis('off')
 
@@ -63,5 +70,5 @@ def plot_predictions(inputs, outputs, masks, epoch, num_samples=5, image_dir=Non
         axs[2].axis('off')
 
         plt.tight_layout()  # Adjust layout to prevent overlap
-        plt.savefig(image_dir+ f"{i + 1}.png")
-        plt.show()
+        plt.savefig(image_dir+ f"{batch_index * batch_size + i + 1}.png")
+        plt.close()
