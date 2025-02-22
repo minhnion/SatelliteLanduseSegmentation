@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-import torch 
+import torch
 
 # Define the DoubleConv block, which consists of two convolutional layers followed by batch normalization and ReLU activation
 class DoubleConv(nn.Module):
@@ -56,6 +56,7 @@ class Up(nn.Module):
             self.conv = DoubleConv(in_channels, out_channels)
 
     def forward(self, x1, x2):
+        # breakpoint()
         x1 = self.up(x1)
         # Calculate the difference in size between the input and the skip connection
         diffY = x2.size()[2] - x1.size()[2]
@@ -76,4 +77,3 @@ class OutConv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
-

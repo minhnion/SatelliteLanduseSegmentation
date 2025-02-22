@@ -11,21 +11,21 @@ class ResizeAndToClassTransform:
         self.augment = augment
 
     def rgb_to_class(self, mask):
-        class_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.uint8)
+        class_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.float32)
 
         # Convert RGB mask values to class indices (adapt your mapping here)
         class_mask[(mask == [0, 0, 255]).all(axis=2)] = 0  # bamboo
         class_mask[(mask == [0, 0, 0]).all(axis=2)] = 0  # unknown
         class_mask[(mask == [0, 255, 0]).all(axis=2)] = 1  # forest
         class_mask[(mask == [255, 0, 0]).all(axis=2)] = 2  # rice_field
-        class_mask[(mask == [0, 255, 255]).all(axis=2)] = 3  # water
+        class_mask[(mask == [0, 255, 255]).all(axis=2)] = 3 # water
         class_mask[(mask == [255, 255, 0]).all(axis=2)] = 4  # residential
         return class_mask
 
     def augment_image_and_mask(self, image, mask):
         # Convert NumPy arrays to PyTorch tensors
-        image_tensor = torch.from_numpy(image).permute(2, 0, 1)  # (C, H, W)
-        mask_tensor = torch.from_numpy(np.array(mask))  # (H, W)
+        image_tensor = torch.from_numpy(image).permute(2, 0, 1).float()  # (C, H, W)
+        mask_tensor = torch.from_numpy(np.array(mask)).float()  # (H, W)
 
         # Apply augmentations to both image and mask
         if self.augment:
@@ -60,6 +60,7 @@ class ResizeAndToClassTransform:
 
         # Resize the mask and convert it to the appropriate format
         mask = mask.resize(self.size, resample=Image.NEAREST)  # Resize mask
+        # print(np.array(mask).shape)
         mask = np.array(mask).astype(np.uint8)  # Convert to NumPy array
 
         # Convert the RGB mask to class indices
@@ -68,4 +69,7 @@ class ResizeAndToClassTransform:
         # Convert image and mask to tensors
         mask = torch.tensor(mask, dtype=torch.long)
         image = torch.from_numpy(image_resized).permute(2, 0, 1).float()  # (C, H, W)
+        if np.isnan(image).any():
+            print(f'Nan values in image after transformation: {image}')
+            raise ValueError('Nan values in image after transformation')
         return image, mask
