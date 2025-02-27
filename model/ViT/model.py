@@ -62,7 +62,7 @@ class ViT(nn.Module):
         return x
 
 class UNet(nn.Module):
-    def __init__(self, n_classes, n_channels=3, depth=8, heads=4, dropout=0.2, bilinear=True):
+    def __init__(self, n_classes, n_channels=3, depth=2, heads=16, dropout=0.2, bilinear=True):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes

@@ -113,7 +113,7 @@ class Updownblock(nn.Module):
     def __init__(self, n_feats):
         super(Updownblock, self).__init__()
         self.encoder = one_module(n_feats)
-        self.decoder_low = one_module(n_feats) #nn.Sequential(one_module(n_feats),
+        self.decoder_low = nn.Sequential(*[one_module(n_feats) for _ in range(5)])
         #                     one_module(n_feats),
         #                     one_module(n_feats))
         self.decoder_high = one_module(n_feats)
@@ -126,8 +126,7 @@ class Updownblock(nn.Module):
         x1 = self.encoder(x)
         x2 = self.down(x1)
         high = x1 - F.interpolate(x2, size = x.size()[-2:], mode='bilinear', align_corners=True)
-        for i in range(5):
-            x2 = self.decoder_low(x2)
+        x2 = self.decoder_low(x2)
         x3 = x2
         # x3 = self.decoder_low(x2)
         high1 = self.decoder_high(high)
@@ -208,11 +207,9 @@ class ESRT(nn.Module):
         x1 = self.head(x1)
         res2 = x1
         #res2 = x2
-        body_out = []
-        for i in range(self.n_blocks):
-            x1 = self.body[i](x1)
-            body_out.append(x1)
-        res1 = torch.cat(body_out,1)
+        body_out = [block(x1) for block in self.body]
+        res1 = torch.cat(body_out, dim=1)
+
         # print("Body output: ",res1.shape)
         res1 = self.reduce(res1)
         # print("reduce output",res1.shape)

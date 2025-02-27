@@ -1,58 +1,84 @@
-from tqdm import tqdm
 import torch
 from utils.seed import set_seed
-from utils.parser import parse_args
-from data.dataloader import load_dataloader, load_one_dataloader
+from utils.parser import parse_infer_args
+from utils.image_utils import open_tif_image
+from utils.infer_utils import infer_patches
+
 from model.ViT.model import UNet
-from model.LinkNet.model import LinkNet
-from model.PromptedVitUnet.model import PromptedVitUnet
-import torch.optim as optim
-import torch.nn as nn
+
 from datetime import datetime
 
-from utils.trainer import train
-from utils.evaluator import evaluate_on_test_set
 import os
-import wandb
 from dotenv import load_dotenv
+import warnings
+from rasterio.errors import NotGeoreferencedWarning
+from PIL import Image  # Correct import
+
+warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)  # Add this line to ignore FutureWarning
+
+classes = ['unidentifiable', 'forest', 'rice_field', 'water', 'residential']
+n_classes = len(classes)
+
+def inference_image(device, input_path, patch_size, output_path, model):
+
+    image = open_tif_image(input_path, rgb_only=False)
+
+    infered_image = infer_patches(model, device, image.shape, image, patch_size)
+
+    infered_image_pil = Image.fromarray(infered_image)
+    infered_image_pil.save(output_path)
 
 if __name__ == "__main__":
     try:
+        import time  # Import time module
+
+        os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+        # Load environment variables from .env file
         load_dotenv()
 
         # Initialize
         set_seed(20)
-        args = parse_args()
+        args = parse_infer_args()
         device = torch.device("cuda:" + str(args.gpu_id)) if args.cuda else torch.device("cpu")
         print(f"Using device: {device}")
 
-        base_path = 'sentinel_cut1024_dataset/train'
-        root_dir = f'/mnt/henryng/{base_path}'
+        input_path = args.input
+        output_folder = args.output
+        pretrained_path = args.pretrained
+        patch_size = args.patch_size
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        image_path =  f"/mnt/anhtn/log/images/dataset:{base_path}/model:{args.model}_epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_datetime:{timestamp}/"
+        assert os.path.exists(input_path), f"Input path {input_path} does not exist"
+        assert os.path.exists(pretrained_path), f"Pretrained path {pretrained_path} does not exist"
 
-        if not os.path.exists(image_path):
-            os.makedirs(image_path)
+        os.makedirs(output_folder, exist_ok=True)
 
-        classes = ['unidentifiable', 'forest', 'rice_field', 'water', 'residential']
-        n_channels = 4 # for new dataset, n_channels = 4
-        n_classes = len(classes)
+        # Load the model with weight path
+        # model = UNet(n_classes=n_classes, n_channels=13).to(device)
+        # checkpoint = torch.load(pretrained_path, map_location=device)
+        # model.load_state_dict(checkpoint)
+        # model = model.eval()
 
-        if args.model == 'LinkNet':
-            model = LinkNet(n_classes=n_classes, n_channels=n_channels).to(device)
-        elif args.model == 'ViTUnet':
-            model = UNet(n_classes=n_classes, n_channels=n_channels, depth=args.depth, heads=args.heads, dropout=args.dropout).to(device)
-        elif args.model == 'PromptedViTUnet':
-            model = PromptedVitUnet(n_classes=n_classes, n_channels=n_channels, depth=args.depth, heads=args.heads, dropout=args.dropout).to(device)
+        # Load the whole model
+        model = torch.load(pretrained_path, map_location=device)
+        model = model.eval()
 
-        torch.cuda.empty_cache()
+        start_time = time.time()  # Start timing
 
-        model_path = '/mnt/anhtn/log/weights/dataset:sentinel_dataset_cut256_filtered_model:ViTUnet_epoch:200_bs:32_lr:0.0001_datetime:20241201_224952/best_weight.pth'
-        model.load_state_dict(torch.load(model_path, weights_only=True))
-        infer_loader = load_one_dataloader(batch_size=args.batch_size, root_dir=root_dir)
-        evaluate_on_test_set(model, infer_loader, classes, image_dir=image_path, wandb_setup=False)
+        if os.path.isfile(input_path):
+            output_path = os.path.join(output_folder, f"{os.path.basename(input_path).split('.')[0]}_infered.png")
+            inference_image(device, input_path, patch_size, output_path, model)
+        else:
+            for file_name in os.listdir(input_path):
+                if file_name.endswith(".tif"):
+                    file_path = os.path.join(input_path, file_name)
+                    output_path = os.path.join(output_folder, f"{os.path.basename(file_path).split('.')[0]}_infered.png")
+                    inference_image(device, file_path, patch_size, output_path, model)
+
+        end_time = time.time()  # End timing
+
+        inference_time = end_time - start_time
+        print(f"Inference time: {inference_time:.2f} seconds")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
         raise

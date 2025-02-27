@@ -12,3 +12,4 @@ load_model.py
 __pycache__
 layers.txt
 *.pth
+*.tif

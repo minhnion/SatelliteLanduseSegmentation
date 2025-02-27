@@ -2,12 +2,9 @@ from model.ESRT import common
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from thop import profile
-from utils.tools import extract_image_patches,\
-    reduce_mean, reduce_sum, same_padding, reverse_patches
-from utils.position import PositionEmbeddingLearned, PositionEmbeddingSine
-import pdb
+from utils.tools import extract_image_patches
 import math
+from flash_attn.flash_attn_interface import flash_attn_func
 
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
@@ -79,55 +76,49 @@ class EffAttention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
         super().__init__()
         self.num_heads = num_heads
-        head_dim = dim // num_heads
-        # NOTE scale factor was wrong in my original version, can set manually to be compat with prev weights
+
+        # Reduce layer halves the input dimension.
+        reduced_dim = dim // 2
+        head_dim = reduced_dim // num_heads
         self.scale = qk_scale or head_dim ** -0.5
 
-        self.reduce = nn.Linear(dim, dim//2, bias=qkv_bias)
-        self.qkv = nn.Linear(dim//2, dim//2 * 3, bias=qkv_bias)
-        self.proj = nn.Linear(dim//2, dim)
+        self.reduce = nn.Linear(dim, reduced_dim, bias=qkv_bias)
+        self.qkv = nn.Linear(reduced_dim, reduced_dim * 3, bias=qkv_bias)
+        self.proj = nn.Linear(reduced_dim, dim)
+
         self.attn_drop = nn.Dropout(attn_drop)
-        print('scale', self.scale)
-        print(dim)
-        print(dim//num_heads)
-        # self.proj = nn.Linear(dim, dim)
-        # self.proj_drop = nn.Dropout(proj_drop)
+        self.proj_drop = nn.Dropout(proj_drop) if proj_drop > 0 else nn.Identity()
 
     def forward(self, x):
-        x = self.reduce(x)
-        B, N, C = x.shape
-        # pdb.set_trace()
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        # q = x.reshape(B, N, 1, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        # k = x.reshape(B, N, 1, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        # v = x.reshape(B, N, 1, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        # qkv: 3*16*8*37*96
-        q, k, v = qkv[0], qkv[1], qkv[2]   # make torchscript happy (cannot use tensor as tuple)
-        # pdb.set_trace()
+        # x: (B, N, dim)
+        x = self.reduce(x)  # (B, N, reduced_dim)
+        B, N, C = x.shape   # Here, C == reduced_dim
 
-        q_all = torch.split(q, math.ceil(N//4), dim=-2)
-        k_all = torch.split(k, math.ceil(N//4), dim=-2)
-        v_all = torch.split(v, math.ceil(N//4), dim=-2)
+        # Compute concatenated q, k, v
+        qkv = self.qkv(x)  # (B, N, 3 * C)
+        # Reshape and permute to obtain (3, B, num_heads, N, head_dim)
+        qkv = qkv.reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv[0], qkv[1], qkv[2]  # Each: (B, num_heads, N, head_dim)
 
-        output = []
-        for q,k,v in zip(q_all, k_all, v_all):
-            # print(f"q shape: {q.shape}")
-            # print(f"k shape: {k.shape}")
-            attn = (q @ k.transpose(-2, -1)) * self.scale   #16*8*37*37
-            attn = attn.softmax(dim=-1)
-            attn = self.attn_drop(attn)
+        # Calculate chunk size (splitting the sequence dimension into 4 parts)
+        chunk_size = math.ceil(N / 4)
+        q_chunks = torch.split(q, chunk_size, dim=-2)
+        k_chunks = torch.split(k, chunk_size, dim=-2)
+        v_chunks = torch.split(v, chunk_size, dim=-2)
 
-            trans_x = (attn @ v).transpose(1, 2)#.reshape(B, N, C)
+        outputs = []
+        for q_chunk, k_chunk, v_chunk in zip(q_chunks, k_chunks, v_chunks):
+            # Compute scaled dot-product attention for each chunk.
+            # qkv_chunk = torch.stack([q_chunk, k_chunk, v_chunk], dim=2)  # (B, num_heads, N, 3, head_dim)
+            out_chunk = flash_attn_func(q_chunk.half(), k_chunk.half(), v_chunk.half(), dropout_p=0.0, causal=False).to(torch.float32)
 
-            output.append(trans_x)
-        # pdb.set_trace()
-        # attn = torch.cat(att, dim=-2)
-        # x = (attn @ v).transpose(1, 2).reshape(B, N, C) #16*37*768
-        x = torch.cat(output,dim=1)
-        x = x.reshape(B,N,C)
-        # pdb.set_trace()
+            out_chunk = out_chunk.transpose(1, 2)  # (B, N, num_heads, head_dim)
+            outputs.append(out_chunk)
+
+        # Concatenate chunks along the sequence dimension and reshape back to (B, N, C)
+        x = torch.cat(outputs, dim=1).reshape(B, N, C)
         x = self.proj(x)
-        # x = self.proj_drop(x)
+        x = self.proj_drop(x)
         return x
 
 ## Base block
