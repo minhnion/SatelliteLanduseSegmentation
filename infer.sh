@@ -1,2 +1,7 @@
-BATCH_SIZE=32
-python infer.py --cuda --model=ViTUnet --gpu_id=0 --lr=0.0001 --epoch=200 --batch_size=$BATCH_SIZE
+#!/bin/bash
+
+INPUT="inference_tif"
+OUTPUT="inference_png"
+PRETRAINED_MODEL="inference_model/model.pth"
+
+python infer.py --input "$INPUT" --output "$OUTPUT" --pretrained "$PRETRAINED_MODEL"

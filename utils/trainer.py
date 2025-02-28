@@ -11,7 +11,7 @@ from utils.logging_utils import plot_metrics
 from utils.metrics import calculate_iou
 from tqdm import tqdm
 
-def train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=100, save_path='best_model.pth', image_dir = None, early_stop=True, patience=20):
+def train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=100, save_path='weight.pth', image_dir = None, early_stop=True, patience=20):
 
     best_val_loss, best_train_loss, best_model_val_precision, best_model_val_recall = float('inf'), float('inf'), float('inf'), float('inf')
     early_stop_counter = 0
@@ -25,6 +25,8 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
         # if (epoch==1):
         #     break
         torch.cuda.empty_cache()
+
+        gc.collect()
         print(f"\nEpoch: {epoch+1}")
         running_loss = 0.0
         model.train()
@@ -35,7 +37,7 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
         optimizer.zero_grad()
 
         for inputs, masks, *_ in progress_bar:
-            # if (i==0):
+            # if (progress_bar.n==2):
             #     break
             inputs, masks = inputs.to(device), masks.to(device)
             # print(f'load data: {time.time()-start}')
@@ -54,6 +56,9 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
             progress_bar.set_postfix(loss=running_loss / (progress_bar.n + 1))  # Show avg loss
 
             torch.cuda.empty_cache()
+
+            gc.collect()
+            # print(f"Peak GPU Memory: {torch.cuda.max_memory_allocated(device) / 1024**2:.2f} MB")
             # print(f'train 1 batch: {time.time()-start}')
 
         epoch_train_loss = running_loss / len(train_loader)
@@ -78,11 +83,15 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
         }
 
         torch.cuda.empty_cache()
+
+        gc.collect()
+
         progress_bar = tqdm(val_loader, desc=f"Validate epoch {epoch+1}/{num_epochs}", leave=True)
 
         with torch.no_grad():
             for inputs, masks, *_ in progress_bar:
-
+                # if (progress_bar.n==2):
+                #     break
                 inputs, masks = inputs.to(device), masks.to(device)
                 outputs = model(inputs)
                 loss = criterion(outputs, masks)
@@ -101,6 +110,8 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
                 progress_bar.set_postfix(loss=val_running_loss / (progress_bar.n + 1))  # Show avg loss
 
                 torch.cuda.empty_cache()
+
+                gc.collect()
 
         epoch_val_loss = val_running_loss / len(val_loader)
         val_losses.append(epoch_val_loss)
@@ -158,13 +169,21 @@ def train(model, train_loader, val_loader, optimizer, scheduler, criterion, clas
             print(f"Early stopping at epoch {epoch + 1}")
             break
 
+        torch.cuda.empty_cache()
+
+        gc.collect()
+
     # Load the best model weights
     if best_model_wts:
         model.load_state_dict(best_model_wts)
+        torch.save(model.state_dict(), save_path.replace('weight', 'model'))
     else:
         model = None
     print(f"Best model has train loss: {best_train_loss}, val loss: {best_val_loss} \nprecision: {best_model_val_precision}, recall: {best_model_val_recall}")
 
     # Plot the metrics
     plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_dir=image_dir)
+    torch.cuda.empty_cache()
+    gc.collect()
+
     return model

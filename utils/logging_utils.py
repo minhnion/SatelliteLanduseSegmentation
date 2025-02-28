@@ -30,6 +30,7 @@ def plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_di
     plt.tight_layout()
     plt.savefig(image_dir + 'train_result.png')
     plt.show()
+    plt.close()
 
 def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, num_samples=5, image_dir=None):
     # Convert tensors to numpy arrays

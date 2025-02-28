@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from utils.logging_utils import plot_predictions
 
-def evaluate_on_test_set(model, test_loader, classes, image_dir=None, wandb_setup=True):
+def evaluate_on_test_set(model, test_loader, classes, image_dir=None, wandb_setup=True, num_samples=5):
     assert model is not None
     model.eval()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -32,7 +32,7 @@ def evaluate_on_test_set(model, test_loader, classes, image_dir=None, wandb_setu
             labels = labels[valid_mask]
             batch_size = test_loader.batch_size
 
-            plot_predictions(inputs, outputs, masks, epoch=1, batch_size=batch_size, batch_index=batch_index, num_samples='all', image_dir = image_dir)
+            plot_predictions(inputs, outputs, masks, epoch=1, batch_size=batch_size, batch_index=batch_index, num_samples=num_samples, image_dir = image_dir)
 
             all_preds_each_cls.extend(preds)
             all_labels_each_cls.extend(labels)
