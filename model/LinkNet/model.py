@@ -18,14 +18,14 @@ class BasicBlock(nn.Module):
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
         self.dropout = nn.Dropout(p=0.1)
-            
+
     def forward(self, x):
         out = self.conv(x)
         out = self.bn(out)
         out = self.relu(out)
-        out = self.dropout(out) 
+        out = self.dropout(out)
         return out
-    
+
 class EncoderBlock(nn.Module):
     def __init__(self, in_channels, strided=True):
         super(EncoderBlock, self).__init__()
@@ -38,7 +38,7 @@ class EncoderBlock(nn.Module):
             nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2 if strided else 1, bias=False),
             nn.BatchNorm2d(out_channels),
         )
-        
+
     def forward(self, x):
         out = self.layer1(x)
         residual1 = self.downsample(x)
@@ -47,7 +47,7 @@ class EncoderBlock(nn.Module):
         out = self.layer3(out)
         out = self.layer4(out) + residual2
         return out
-    
+
 class DecoderBlock(nn.Module):
     def __init__(self, in_channels):
         super(DecoderBlock, self).__init__()
@@ -57,41 +57,41 @@ class DecoderBlock(nn.Module):
             nn.BatchNorm2d(in_channels // 4)
         )
         self.layer3 = BasicBlock(in_channels // 4, in_channels // 2, kernel_size=1)
-        
+
     def forward(self, x):
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
         return out
-    
+
 class InitialBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(InitialBlock, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=7, stride=2, padding=3)
         self.bn = nn.BatchNorm2d(out_channels)
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
-    
+
     def forward(self, x):
         out = self.conv(x)
         out = self.bn(out)
         out = self.maxpool(out)
         return out
-    
+
 class FinalBlock(nn.Module):
     def __init__(self, in_channels, n_classes):
         super(FinalBlock, self).__init__()
-        
+
         self.transposeconv1 = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=3, stride=2, output_padding=0)
         self.bn1 = nn.BatchNorm2d(in_channels // 2)
-        
+
         self.conv1 = nn.Conv2d(in_channels // 2, in_channels // 2, kernel_size=2)
         self.bn2 = nn.BatchNorm2d(in_channels // 2)
-        
+
         self.conv2 = nn.Conv2d(in_channels // 2, out_channels=n_classes, kernel_size=3, stride=1, padding=1)
         self.bn3 = nn.BatchNorm2d(n_classes)
-        
-#         self.softmax = nn.Softmax(dim=-1)    
-        
+
+#         self.softmax = nn.Softmax(dim=-1)
+
     def forward(self, x):
         out = self.transposeconv1(x)
         out = self.bn1(out)
@@ -101,11 +101,11 @@ class FinalBlock(nn.Module):
         out = self.bn3(out)
 #         out = self.softmax(out)
         return out
-    
+
 class LinkNet(nn.Module):
     def __init__(self, n_classes, n_channels=3):
         super(LinkNet, self).__init__()
-        self.initblock = InitialBlock(5, 64)
+        self.initblock = InitialBlock(n_channels, 64)
         self.encoder1 = EncoderBlock(64, strided=False)
         self.encoder2 = EncoderBlock(64)
         self.encoder3 = EncoderBlock(128)
@@ -115,10 +115,10 @@ class LinkNet(nn.Module):
         self.decoder2 = DecoderBlock(128)
         self.decoder1 = DecoderBlock(64)
         self.finalblock = FinalBlock(32, n_classes)
-        
+
         # Apply He initialization
         self.apply(init_weights_he)
-        
+
     def forward(self, x):
         out = self.initblock(x)
         residual1 = self.encoder1(out)

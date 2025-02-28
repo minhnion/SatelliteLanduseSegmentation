@@ -1,4 +1,4 @@
-import numpy as np 
+import numpy as np
 from torchvision.transforms.functional import hflip, vflip, rotate
 from PIL import Image
 import numpy as np
@@ -21,31 +21,48 @@ def class_to_rgb(class_mask):
 
     return rgb_mask
 
-def open_tif_image(tiff_file, channel_num=5):
+def open_tif_image(tiff_file, rgb_only=False):
     try:
         with rasterio.open(tiff_file) as src:
-            # Check the number of bands in the file
-            num_bands = src.count
-#             print(f"{tiff_file} has {num_bands} bands.")
+            image = src.read([1, 2, 3]) if rgb_only else src.read()
+            image = np.nan_to_num(image)  # Replace NaN values with 0
+            image = np.transpose(image, (1, 2, 0))
+            image_max = np.max(image)
+            image_min = np.min(image)
+            image = (image - image_min) / (image_max - image_min)
+            image_max = np.max(image)
+            image_min = np.min(image)
+            if np.isnan(image).any():
+                print(f"NaN values found in image {tiff_file}")
+                raise ValueError
+            # print(f"Image min: {image_min}, Image max: {image_max}")
+            # print(f"Image dtype: {dtype}")
+            return image
 
-            # Only proceed if the file has at least the required number of bands
-            if num_bands < channel_num:
-                print(f"Error: {tiff_file} does not have enough bands (requires {channel_num}).")
-                return
-
-            # Read the bands dynamically based on the channel_num
-            bands = []
-            for i in range(1, channel_num + 1):
-                bands.append(src.read(i))  # Band indices in rasterio start at 1
-
-        # Stack the read bands into an RGB-like array (or multi-channel array if more than 3)
-        stacked_bands = np.dstack(bands) 
-        stacked_bands_no_nan = np.nan_to_num(stacked_bands)  # Replace NaN values with 0
-        
-        return stacked_bands_no_nan
-    
     except Exception as e:
         print(f"Error opening file {tiff_file}: {e}")
+
+def split_image(image: np.ndarray, num_tiles: int, tile_idx: int) -> np.ndarray:
+    """
+    Splits a NumPy image into `num_tiles` parts along both axes (x and y) and returns the part at index `tile_idx`.
+
+    :param image: NumPy array representing the image (H, W, C) or (H, W) for grayscale images.
+    :param num_tiles: Number of parts to split the image into per axis.
+    :param tile_idx: Index of the part to return (0-based, row-major order).
+    :return: The selected image tile as a NumPy array.
+    """
+    if num_tiles < 1:
+        raise ValueError("num_tiles must be at least 1")
+
+    h_splits = np.array_split(image, num_tiles, axis=0)
+    tiles = [np.array_split(h, num_tiles, axis=1) for h in h_splits]
+
+    flat_tiles = [tile for row in tiles for tile in row]
+
+    if tile_idx < 0 or tile_idx >= len(flat_tiles):
+        raise ValueError("tile_idx must be in range [0, num_tiles*num_tiles-1]")
+
+    return flat_tiles[tile_idx]
 
 class ResizeAndToClassTransform:
     def __init__(self, size, augment=False):
@@ -99,7 +116,7 @@ class ResizeAndToClassTransform:
         for i in range(image.shape[2]):
             resized_channel = cv2.resize(image[:, :, i], self.size)
             image_channel.append(resized_channel)
-        
+
         image_resized = np.stack(image_channel, axis=-1)
 
         # Resize the mask and convert it to the appropriate format

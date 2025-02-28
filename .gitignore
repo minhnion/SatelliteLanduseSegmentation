@@ -5,3 +5,11 @@ wandb
 log
 __pycache__
 __init__
+pytorch_caney
+load_model.py
+.env
+*/__pycache__
+__pycache__
+layers.txt
+*.pth
+*.tif

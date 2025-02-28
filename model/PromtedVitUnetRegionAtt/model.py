@@ -8,8 +8,8 @@ from layers.transformer_layers import *
 from layers.unet_layers import * 
 
 # Define the PromptedViT class
-class PromptedViT(nn.Module):
-    def __init__(self, *, image_size, patch_size, dim, prompt_dim, depth, heads, mlp_dim, pool='cls', channels=512, dim_head=64, dropout=0.2, emb_dropout=0.2):
+class PromptedViTRegionAtt(nn.Module):
+    def __init__(self, *, image_size, patch_size, dim, prompt_dim, depth, heads, mlp_dim, pool='cls', channels=512, dim_head=64, dropout=0., emb_dropout=0.):
         super().__init__()
         assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
 
@@ -71,16 +71,13 @@ class PromptedViT(nn.Module):
         x = self.to_latent(x)
         return x
 
-class PromptedVitUnet(nn.Module):
-    def __init__(self, n_classes, n_channels=3, bilinear=True, prompt_dim=128, depth=8, heads=4, dropout=0.2):
-        super(PromptedVitUnet, self).__init__()
+class PromptedVitRegionAttUnet(nn.Module):
+    def __init__(self, n_classes, n_channels=3, bilinear=True, prompt_dim=128):
+        super(PromptedVitRegionAttUnet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
-        self.heads = heads 
-        self.depth = depth 
-        self.dropout = dropout 
-        
+
         # Encoder (Contracting Path)
         self.inc = DoubleConv(n_channels, 64)
         self.down1 = Down(64, 128)
@@ -91,17 +88,15 @@ class PromptedVitUnet(nn.Module):
 
         # Prompted Vision Transformer block
         self.vit = PromptedViT(
-            image_size=256,
+            image_size=32,
             patch_size=8,
             dim=2048,  # Total dimension expected by the transformer
             prompt_dim=prompt_dim,
-            depth=depth,
-            heads=heads,
+            depth=2,
+            heads=16,
             mlp_dim=12,
             pool='cls',
             channels=512,
-            dropout=self.dropout,
-            emb_dropout=self.dropout
         )
 
         # Adjusted convolution layers after ViT

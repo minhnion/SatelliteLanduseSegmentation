@@ -28,11 +28,10 @@ from rasterio.errors import NotGeoreferencedWarning
 import shutil
 
 warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
-warnings.filterwarnings("ignore", category=FutureWarning)
 
 if __name__ == "__main__":
     try:
-        os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+        # os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
         # Load environment variables from .env file
         load_dotenv()
 
@@ -59,12 +58,8 @@ if __name__ == "__main__":
         root_dir = f'/mnt/henryng/{base_path}'
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        root_log_path = '/mnt/anhtn/log'
-        model_log_path = f'dataset:{base_path}/model:{args.model}/epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_datetime:{timestamp}/'
-        weight_path = os.path.join(root_log_path, 'weights', model_log_path)
-        image_path = os.path.join(root_log_path, 'images', model_log_path)
-
+        weight_path = f"/mnt/anhtn/log/weights/dataset:{base_path}/model:{args.model}/epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_datetime:{timestamp}/"
+        image_path =  f"/mnt/anhtn/log/images/dataset:{base_path}/model:{args.model}/epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_datetime:{timestamp}/"
         if not os.path.exists(weight_path):
             os.makedirs(weight_path)
         if not os.path.exists(image_path):
@@ -95,10 +90,6 @@ if __name__ == "__main__":
             checkpoint = 'model/ViT/current_pretrained_unet_model.pth'
             model.load_state_dict(torch.load(checkpoint),strict=False)
 
-        if args.pretrained:
-            checkpoint = args.pretrained
-            model.load_state_dict(torch.load(checkpoint),strict=False)
-
         print("model loaded")
         train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, root_dir=root_dir, size=size, rgb_only=rgb_only)
         print("dataloader loaded")
@@ -119,8 +110,8 @@ if __name__ == "__main__":
             group = f'{args.model}',
             name=f'model:{args.model}_epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_cat?:{sr_cat}_datetime:{timestamp}'
         )
-        model = train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'weight.pth', image_dir=image_path, early_stop=True, patience=20)
-        evaluate_on_test_set(model, test_loader, classes, image_dir=image_path, num_samples=1)
+        # model = train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'best_weight.pth', image_dir=image_path, early_stop=True, patience=20)
+        evaluate_on_test_set(model, test_loader, classes, image_dir=image_path)
 
         # model_path = '/mnt/anhtn/log/weights/dataset:gg_earth_cut64_dataset_model:ViTUnet_epoch:200_bs:16_lr:0.0001_datetime:20241130_015542/best_weight.pth'
         # model.load_state_dict(torch.load(model_path, weights_only=True))
