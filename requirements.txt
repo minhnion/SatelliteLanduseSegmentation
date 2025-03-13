@@ -8,3 +8,5 @@ tqdm
 scikit-learn
 matplotlib
 python-dotenv
+torchgeo==git+https://github.com/microsoft/torchgeo 
+satlaspretrain_models

@@ -144,12 +144,8 @@ if __name__ == "__main__":
         else:
             model = train_sr_seg(model, train_loader, val_loader, optimizer, scheduler, criterion_seg, criterion_sr, classes, device, l1_lambda=0, num_epochs=num_epochs, save_path=weight_path + 'weight.pth', image_dir=image_path, early_stop=True, patience=30)
             evaluate_sr_seg_on_test_set(model, test_loader, classes, image_dir=image_path, num_samples=1)
+
         run.finish()
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        # if os.path.exists(weight_path):
-        #     shutil.rmtree(weight_path)
-        # if os.path.exists(image_path):
-        #     shutil.rmtree(image_path)
-        raise
