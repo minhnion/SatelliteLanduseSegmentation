@@ -122,10 +122,6 @@ if __name__ == "__main__":
         model = train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'weight.pth', image_dir=image_path, early_stop=True, patience=20)
         evaluate_on_test_set(model, test_loader, classes, image_dir=image_path, num_samples=1)
 
-        # model_path = '/mnt/anhtn/log/weights/dataset:gg_earth_cut64_dataset_model:ViTUnet_epoch:200_bs:16_lr:0.0001_datetime:20241130_015542/best_weight.pth'
-        # model.load_state_dict(torch.load(model_path, weights_only=True))
-        # infer_loader = load_one_dataloader(batch_size=args.batch_size, root_dir=root_dir)
-        # evaluate_on_test_set(model, infer_loader, classes, image_dir=image_path)
         run.finish()
 
     except Exception as e:
@@ -134,4 +130,3 @@ if __name__ == "__main__":
             shutil.rmtree(weight_path)
         if os.path.exists(image_path):
             shutil.rmtree(image_path)
-        raise
