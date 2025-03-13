@@ -4,7 +4,24 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--cuda", action='store_true', help='Use CUDA if available')
-    parser.add_argument("--model", type=str, choices=['ViTUnet', 'PretrainedViT', 'LinkNet', 'PromptedViTUnet', 'Segformer', 'PretrainedViTUNet', 'UNetSR'], default='ViTUnet', help="model to train")
+    parser.add_argument(
+        "--model",
+        type=str,
+        choices=[
+            'ViTUnet',
+            'PretrainedViT',
+            'LinkNet',
+            'PromptedViTUnet',
+            'Segformer',
+            'PretrainedViTUNet',
+            'UNetSR',
+            'CrossAttentionUNetSR',
+            'FCNResNet',
+            'ESSRT',
+        ],
+        default='ViTUnet',
+        help="model to train"
+    )
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--lr', type=float, default=0.0005, help='learning rate')
     parser.add_argument("--gpu_id", type=int, default=1, help="gpu id")

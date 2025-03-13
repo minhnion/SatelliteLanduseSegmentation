@@ -159,8 +159,34 @@ class Un(nn.Module):
 
         return self.weight1(x) + self.weight2(out)
 
+class UpConv(nn.Module):
+    """
+    Upscaling then double conv
+    """
+    def __init__(self, in_channels, out_channels):
+        super(UpConv, self).__init__()
+
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1)
+
+    def forward(self, x):
+
+        return self.conv(x)
+
+class SegDecoder(nn.Module):
+    def __init__(self, in_channels, out_channels, scale_factor):
+        super(SegDecoder, self).__init__()  # Fix: Call super().__init__()
+        self.scale_factor = scale_factor
+        self.conv1 = UpConv(in_channels, in_channels // 2)
+        self.conv2 = UpConv(in_channels // 2, out_channels)
+
+    def forward(self, x):
+        x1 = self.conv1(x)
+        x2 = self.conv2(x1)
+        x3 = nn.functional.interpolate(x2, scale_factor=self.scale_factor,mode='bicubic')
+        return x3
+
 class ESRT(nn.Module):
-    def __init__(self, n_blocks=1, n_channels=3, upscale=4, conv=common.default_conv, encoder_only = False):
+    def __init__(self, n_blocks=1, n_channels=3, upscale=2, conv=common.default_conv, encoder_only = False, n_classes=None):
         super(ESRT, self).__init__()
         wn = lambda x:torch.nn.utils.weight_norm(x)
         n_feats = 32
@@ -172,6 +198,7 @@ class ESRT(nn.Module):
         self.n_blocks = n_blocks
         self.encoder_only = encoder_only
 
+        self.n_classes = n_classes
         # RGB mean for DIV2K
         rgb_mean = (0.4488, 0.4371, 0.4040)
         rgb_std = (1.0, 1.0, 1.0)
@@ -200,6 +227,9 @@ class ESRT(nn.Module):
         self.tail = nn.Sequential(*modules_tail)
         self.reduce = conv(n_blocks*n_feats, n_feats, kernel_size)
 
+        # Segmentation branch
+        if self.n_classes:
+            self.seg_decoder = SegDecoder(n_feats, n_classes, scale_factor=2)
 
     def forward(self, x1,x2 = None, test=False):
         # print(x1.shape)
@@ -207,9 +237,11 @@ class ESRT(nn.Module):
         x1 = self.head(x1)
         res2 = x1
         #res2 = x2
-        body_out = [block(x1) for block in self.body]
-        res1 = torch.cat(body_out, dim=1)
-
+        body_out = []
+        for i in range(self.n_blocks):
+            x1 = self.body[i](x1)
+            body_out.append(x1)
+        res1 = torch.cat(body_out,1)
         # print("Body output: ",res1.shape)
         res1 = self.reduce(res1)
         # print("reduce output",res1.shape)
@@ -220,6 +252,9 @@ class ESRT(nn.Module):
         up_res2 = self.up(res2)
 
         x1 = up_res2 + x1
+        if self.n_classes:
+            seg_mask = self.seg_decoder(res1)
+            return x1, seg_mask
         return x1
 
     def load_state_dict(self, state_dict, strict=False):

@@ -1,5 +1,6 @@
 import torchvision.transforms.functional as functional
 from torchvision.transforms.functional import hflip, vflip, rotate
+from utils.image_utils import rgb_to_class
 from PIL import Image
 import numpy as np
 import torch
@@ -9,18 +10,6 @@ class ResizeAndToClassTransform:
     def __init__(self, size, augment=False):
         self.size = size
         self.augment = augment
-
-    def rgb_to_class(self, mask):
-        class_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.float32)
-
-        # Convert RGB mask values to class indices (adapt your mapping here)
-        class_mask[(mask == [0, 0, 255]).all(axis=2)] = 0  # bamboo
-        class_mask[(mask == [0, 0, 0]).all(axis=2)] = 0  # unknown
-        class_mask[(mask == [0, 255, 0]).all(axis=2)] = 1  # forest
-        class_mask[(mask == [255, 0, 0]).all(axis=2)] = 2  # rice_field
-        class_mask[(mask == [0, 255, 255]).all(axis=2)] = 3 # water
-        class_mask[(mask == [255, 255, 0]).all(axis=2)] = 4  # residential
-        return class_mask
 
     def augment_image_and_mask(self, image, mask):
         # Convert NumPy arrays to PyTorch tensors
@@ -44,7 +33,7 @@ class ResizeAndToClassTransform:
         mask = Image.fromarray(mask_tensor.numpy().astype(np.uint8))  # Convert mask back to PIL Image
         return image, mask
 
-    def __call__(self, image, mask):
+    def __call__(self, image, mask, mask_scale=None):
         # Ensure NaN values are handled
         image = np.nan_to_num(image)
 
@@ -59,12 +48,14 @@ class ResizeAndToClassTransform:
         image_resized = np.stack(image_channel, axis=-1)
 
         # Resize the mask and convert it to the appropriate format
-        mask = mask.resize(self.size, resample=Image.NEAREST)  # Resize mask
+        mask_scale = 1 if mask_scale is None else mask_scale
+        mask = mask.resize(tuple(x * mask_scale for x in self.size), resample=Image.NEAREST)
         # print(np.array(mask).shape)
         mask = np.array(mask).astype(np.uint8)  # Convert to NumPy array
-
+        mask[mask > 128] = 255
+        mask[mask <= 128] = 0
         # Convert the RGB mask to class indices
-        mask = self.rgb_to_class(mask)
+        mask = rgb_to_class(mask)
 
         # Convert image and mask to tensors
         mask = torch.tensor(mask, dtype=torch.long)
@@ -73,3 +64,27 @@ class ResizeAndToClassTransform:
             print(f'Nan values in image after transformation: {image}')
             raise ValueError('Nan values in image after transformation')
         return image, mask
+
+def to_numpy_array(image) -> np.ndarray:
+    """
+    Convert input to a NumPy array.
+
+    Parameters:
+        image: Input image (NumPy array, list, tuple, PIL Image, or Torch tensor).
+
+    Returns:
+        np.ndarray: Converted NumPy array.
+    """
+    if isinstance(image, np.ndarray):
+        return image
+    elif isinstance(image, torch.Tensor):
+        return image.cpu().numpy()  # Move to CPU and convert to NumPy
+    elif isinstance(image, (list, tuple)):
+        return np.array(image, dtype=np.uint8)
+    try:
+        from PIL import Image
+        if isinstance(image, Image.Image):
+            return np.array(image)
+    except ImportError:
+        pass
+    raise ValueError("Unsupported image format. Provide a NumPy array, list, tuple, Torch tensor, or PIL Image.")

@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import cv2
 import rasterio
+import torch.nn.functional as F
 
 def class_to_rgb(class_mask):
     # Create an RGB image with the same dimensions as the class mask
@@ -20,6 +21,19 @@ def class_to_rgb(class_mask):
     rgb_mask[class_mask == 4] = [255, 255, 0]    # residential
 
     return rgb_mask
+
+def rgb_to_class(mask):
+    class_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.uint8)
+
+    # Convert RGB mask values to class indices (adapt your mapping here)
+    class_mask[(mask == [0, 0, 0]).all(axis=2)] = 0  # unidentifiable
+    class_mask[(mask == [255, 255, 255]).all(axis=2)] = 0  # unidentifiable
+    class_mask[(mask == [0, 0, 255]).all(axis=2)] = 0  # lightly_vegetated
+    class_mask[(mask == [0, 255, 0]).all(axis=2)] = 1  # forest
+    class_mask[(mask == [255, 0, 0]).all(axis=2)] = 2  # rice_field
+    class_mask[(mask == [0, 255, 255]).all(axis=2)] = 3  # water
+    class_mask[(mask == [255, 255, 0]).all(axis=2)] = 4  # residential
+    return class_mask
 
 def open_tif_image(tiff_file, rgb_only=False):
     try:
@@ -63,6 +77,34 @@ def split_image(image: np.ndarray, num_tiles: int, tile_idx: int) -> np.ndarray:
         raise ValueError("tile_idx must be in range [0, num_tiles*num_tiles-1]")
 
     return flat_tiles[tile_idx]
+
+def downscale_image(image: np.ndarray, scale_factor: int) -> np.ndarray:
+    """
+    Downscale an image using bicubic interpolation while handling CHW format.
+
+    Parameters:
+        image (np.ndarray): The input image in (C, H, W) format.
+        scale_factor (int): The scaling factor (e.g., 2 for half size).
+
+    Returns:
+        np.ndarray: The downscaled image in (C, H', W') format.
+    """
+    # Convert numpy array to PyTorch tensor
+    image_tensor = torch.from_numpy(image).float()  # (C, H, W)
+
+    # Downscale using PyTorch's interpolate
+    downscaled_tensor = F.interpolate(
+        image_tensor.unsqueeze(0),  # Add batch dimension
+        scale_factor=1 / scale_factor,
+        mode='bicubic',
+        align_corners=False,
+        recompute_scale_factor=True
+    ).squeeze(0)  # Remove batch dimension
+
+    # Convert back to numpy array
+    downscaled_image = downscaled_tensor.numpy()
+
+    return downscaled_image
 
 class ResizeAndToClassTransform:
     def __init__(self, size, augment=False):
