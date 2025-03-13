@@ -32,44 +32,47 @@ def plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_di
     plt.show()
     plt.close()
 
-def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, num_samples=5, image_dir=None):
+def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, num_samples=5, image_dir=None, sr_images=None):
     # Convert tensors to numpy arrays
     inputs = inputs.cpu().numpy()
     outputs = torch.argmax(outputs, dim=1).cpu().numpy()
-    if not isinstance(masks, np.ndarray):
-        masks = masks.cpu().numpy()
+    masks = masks.cpu().numpy() if not isinstance(masks, np.ndarray) else masks
+    sr_images = sr_images.cpu().numpy() if sr_images is not None else None
+    num_subplots = 4 if sr_images is not None else 3
 
-    samples = len(inputs) if num_samples=='all' else num_samples
+    samples = len(inputs) if num_samples == 'all' else num_samples
     for i in range(samples):
-        # Create a new figure for each sample
-        fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+        fig, axs = plt.subplots(1, num_subplots, figsize=(15, 5))
         fig.suptitle(f'Epoch {epoch + 1} - Sample {i + 1}')
 
         # Plot input image
         axs[0].set_title(f'Input {i+1}')
-        image = inputs[i].transpose(1, 2, 0)  # Convert CHW to HWC
-        image = image[:, :, :3]
-        # image = (image * 255).astype(np.int64)
-        divise_factor = 1
-        if np.issubdtype(image.dtype, np.integer):
-            max_value = np.max(image)
-            divise_factor = 2 ** int(np.ceil(np.log2(max_value)))  # Normalize for display
-        else:
-            divise_factor = np.max(image)
+        image = inputs[i].transpose(1, 2, 0)[:, :, :3]
+        divise_factor = np.max(image) if not np.issubdtype(image.dtype, np.integer) else 2 ** int(np.ceil(np.log2(np.max(image))))
         image = (image / divise_factor).astype(float)
         axs[0].imshow(image)
         axs[0].axis('off')
+        idx = 1
 
-        # Plot prediction
-        axs[1].set_title(f'Prediction {i+1}')
-        axs[1].imshow(class_to_rgb(outputs[i]))
-        axs[1].axis('off')
+        if sr_images is not None:
+            axs[idx].set_title(f'SR Images {i+1}')
+            sr_image = sr_images[i].transpose(1, 2, 0)[:, :, 4:1:-1]
+            sr_image = np.nan_to_num(sr_image)
+            sr_image = (sr_image * 255).astype(np.int64)
+            axs[idx].imshow(sr_image)
+            axs[idx].axis('off')
+            idx += 1
 
-        # Plot ground truth
-        axs[2].set_title(f'Groundtruth {i+1}')
-        axs[2].imshow(class_to_rgb(masks[i]))
-        axs[2].axis('off')
+        axs[idx].set_title(f'Prediction {i+1}')
+        axs[idx].imshow(class_to_rgb(outputs[i]))
+        axs[idx].axis('off')
+        idx+=1
 
-        plt.tight_layout()  # Adjust layout to prevent overlap
-        plt.savefig(image_dir+ f"{batch_index * batch_size + i + 1}.png")
+        axs[idx].set_title(f'Groundtruth {i+1}')
+        axs[idx].imshow(class_to_rgb(masks[i]))
+        axs[idx].axis('off')
+
+        plt.tight_layout()
+        if image_dir:
+            plt.savefig(f"{image_dir}{batch_index * batch_size + i + 1}.png")
         plt.close()

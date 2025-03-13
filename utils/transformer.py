@@ -101,7 +101,7 @@ class EffAttention(nn.Module):
         q, k, v = qkv[0], qkv[1], qkv[2]  # Each: (B, num_heads, N, head_dim)
 
         # Calculate chunk size (splitting the sequence dimension into 4 parts)
-        chunk_size = math.ceil(N / 4)
+        chunk_size = min(128, math.ceil(N / 4))  # Dynamically adjust chunk size
         q_chunks = torch.split(q, chunk_size, dim=-2)
         k_chunks = torch.split(k, chunk_size, dim=-2)
         v_chunks = torch.split(v, chunk_size, dim=-2)
@@ -109,8 +109,7 @@ class EffAttention(nn.Module):
         outputs = []
         for q_chunk, k_chunk, v_chunk in zip(q_chunks, k_chunks, v_chunks):
             # Compute scaled dot-product attention for each chunk.
-            # qkv_chunk = torch.stack([q_chunk, k_chunk, v_chunk], dim=2)  # (B, num_heads, N, 3, head_dim)
-            out_chunk = flash_attn_func(q_chunk.half(), k_chunk.half(), v_chunk.half(), dropout_p=0.0, causal=False).to(torch.float32)
+            out_chunk = nn.functional.scaled_dot_product_attention(q_chunk, k_chunk, v_chunk, dropout_p=0.0)
 
             out_chunk = out_chunk.transpose(1, 2)  # (B, N, num_heads, head_dim)
             outputs.append(out_chunk)
