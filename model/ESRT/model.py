@@ -215,9 +215,9 @@ class ESRT(nn.Module):
 
         # define tail module
         modules_tail = [
-
             common.Upsampler(conv, scale, n_feats, act=False),
-            conv(n_feats, n_channels, kernel_size)]
+            conv(n_feats, n_channels, kernel_size)
+        ]
 
 
         self.up = nn.Sequential(common.Upsampler(conv,scale,n_feats,act=False),

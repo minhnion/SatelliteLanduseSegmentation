@@ -18,6 +18,7 @@ def parse_args():
             'CrossAttentionUNetSR',
             'FCNResNet',
             'ESSRT',
+            'FoundationModel'
         ],
         default='ViTUnet',
         help="model to train"

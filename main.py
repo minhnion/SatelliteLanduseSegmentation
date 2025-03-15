@@ -13,6 +13,7 @@ from model.UNetSR.model import UNetSR
 from model.CrossAttentionUNetSR.model import CrossAttentionUNetSR
 from model.FCNResNet.model import FCNResnet
 from model.ESRT.model import ESRT
+from model.Foundation.model import FoundationModel
 
 import torch.optim as optim
 import torch.nn as nn
@@ -34,6 +35,7 @@ warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 if __name__ == "__main__":
+    sr_seg_models = ['ESSRT', 'FoundationModel']
     try:
         os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
         # Load environment variables from .env file
@@ -105,6 +107,8 @@ if __name__ == "__main__":
             model = FCNResnet(n_channels=n_channels, n_classes=n_classes).to(device)
         elif args.model == 'ESSRT':
             model = ESRT(n_channels=n_channels, n_classes=n_classes, upscale=scale_factor).to(device)
+        elif args.model == 'FoundationModel':
+            model = FoundationModel(n_channels=n_channels, n_classes=n_classes, upscale_factor=scale_factor).to(device)
 
         if args.pretrained:
             checkpoint = args.pretrained
@@ -113,7 +117,8 @@ if __name__ == "__main__":
         model = model.to(device)
 
         print("model loaded")
-        if args.model == 'ESSRT':
+        if args.model in sr_seg_models:
+            print("Sr + Seg model")
             train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, root_dir=root_dir, size=size, rgb_only=rgb_only, mask_scale=mask_scale, scale_factor=scale_factor)
         else:
             train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, root_dir=root_dir, size=size, rgb_only=rgb_only, mask_scale=mask_scale)
@@ -138,12 +143,12 @@ if __name__ == "__main__":
 
         num_epochs = 1 if base_path == 'dummy_dataset' else args.epoch
 
-        if args.model != 'ESSRT':
-            model = train(model, train_loader, val_loader, optimizer, scheduler, criterion_seg, classes, device, l1_lambda=0, num_epochs=num_epochs, save_path=weight_path + 'weight.pth', image_dir=image_path, early_stop=True, patience=30)
-            evaluate_on_test_set(model, test_loader, classes, image_dir=image_path, num_samples=1)
-        else:
+        if args.model in sr_seg_models:
             model = train_sr_seg(model, train_loader, val_loader, optimizer, scheduler, criterion_seg, criterion_sr, classes, device, l1_lambda=0, num_epochs=num_epochs, save_path=weight_path + 'weight.pth', image_dir=image_path, early_stop=True, patience=30)
             evaluate_sr_seg_on_test_set(model, test_loader, classes, image_dir=image_path, num_samples=1)
+        else:
+            model = train(model, train_loader, val_loader, optimizer, scheduler, criterion_seg, classes, device, l1_lambda=0, num_epochs=num_epochs, save_path=weight_path + 'weight.pth', image_dir=image_path, early_stop=True, patience=30)
+            evaluate_on_test_set(model, test_loader, classes, image_dir=image_path, num_samples=1)
 
         run.finish()
 
