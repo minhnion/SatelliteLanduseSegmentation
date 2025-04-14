@@ -57,7 +57,8 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
 
         if sr_images is not None:
             axs[idx].set_title(f'SR Images {i+1}')
-            print(f"SR Image {i+1} shape: {sr_images[i].shape}")
+            print(f"\nSR Image {i+1} shape: {sr_images[i].shape}")
+            print(f"\nMax: {np.max(sr_images[i])}, Min: {np.min(sr_images[i])}")
             sr_image = sr_images[i].transpose(1, 2, 0)[:, :, 4:1:-1]
             sr_image = np.nan_to_num(sr_image)
             sr_image = (sr_image * 255).astype(np.int64)
