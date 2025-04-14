@@ -32,7 +32,7 @@ def plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_di
     plt.show()
     plt.close()
 
-def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, num_samples=5, image_dir=None, sr_images=None):
+def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLASSES_TO_RGB, classes, num_samples=5, image_dir=None, sr_images=None):
     # Convert tensors to numpy arrays
     inputs = inputs.cpu().numpy()
     outputs = torch.argmax(outputs, dim=1).cpu().numpy()
@@ -64,12 +64,12 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, num
             idx += 1
 
         axs[idx].set_title(f'Prediction {i+1}')
-        axs[idx].imshow(class_to_rgb(outputs[i]))
+        axs[idx].imshow(class_to_rgb(outputs[i], CLASSES_TO_RGB, classes))
         axs[idx].axis('off')
         idx+=1
 
         axs[idx].set_title(f'Groundtruth {i+1}')
-        axs[idx].imshow(class_to_rgb(masks[i]))
+        axs[idx].imshow(class_to_rgb(masks[i], CLASSES_TO_RGB, classes))
         axs[idx].axis('off')
 
         plt.tight_layout()
