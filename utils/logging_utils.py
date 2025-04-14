@@ -32,7 +32,7 @@ def plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_di
     plt.show()
     plt.close()
 
-def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLASSES_TO_RGB, classes, num_samples=5, image_dir=None, sr_images=None):
+def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLASSES_TO_RGB, classes, num_samples=5, image_dir=None, sr_images=None, groundtruths=None):
     # Convert tensors to numpy arrays
     inputs = inputs.cpu().numpy()
     outputs = torch.argmax(outputs, dim=1).cpu().numpy()
@@ -64,6 +64,17 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
             # Clip values to be between 0 and 1
             sr_image = np.clip(sr_image, 0, 1)
             axs[idx].imshow(sr_image)
+            axs[idx].axis('off')
+            idx += 1
+
+        if groundtruths is not None:
+            axs[idx].set_title(f'Groundtruth {i+1}')
+            print(f"\nGroundtruth {i+1} shape: {groundtruths[i].shape}")
+            groundtruth = groundtruths[i].transpose(1, 2, 0)[:, :, :3]
+            groundtruth = np.nan_to_num(groundtruth)
+            # Clip values to be between 0 and 1
+            groundtruth = np.clip(groundtruth, 0, 1)
+            axs[idx].imshow(groundtruth)
             axs[idx].axis('off')
             idx += 1
 

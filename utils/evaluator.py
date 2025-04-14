@@ -128,7 +128,7 @@ def evaluate_sr_seg_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, ima
             all_preds.append(preds)
             all_labels.append(labels)
 
-            plot_predictions(inputs, seg_masks, masks, classes=classes, epoch=1, num_samples=1, sr_images=sr_images, image_dir=image_dir, batch_index=batch_index, batch_size=batch_size, CLASSES_TO_RGB=CLASSES_TO_RGB)
+            plot_predictions(lr_images, seg_masks, masks, classes=classes, epoch=1, num_samples=1, sr_images=sr_images, groundtruths=inputs, image_dir=image_dir, batch_index=batch_index, batch_size=batch_size, CLASSES_TO_RGB=CLASSES_TO_RGB)
 
     # Compute averages
     all_preds = torch.cat(all_preds)
