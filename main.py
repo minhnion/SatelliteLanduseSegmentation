@@ -82,8 +82,8 @@ if __name__ == "__main__":
         weights = dataset_config['weights']
 
         # base_path = 'new_13bands_dataset_splitted'
-        root_dir = f'/mnt/hungvv/minh' if not args.data_path else args.data_path
-        dataset_dir = os.path.join(root_dir,'dataset', base_path)
+        root_dir = f'/mnt/hungvv/minh'
+        dataset_dir = os.path.join(root_dir,'dataset', base_path) if not args.data_path else args.data_path
         log_path = os.path.join(root_dir, 'log') if not args.log_path else args.log_path
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
