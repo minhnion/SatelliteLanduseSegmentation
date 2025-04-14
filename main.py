@@ -116,7 +116,7 @@ if __name__ == "__main__":
             'UNetSR': lambda: UNetSR(n_classes=n_classes, n_channels=n_channels, sr_cat=sr_cat, sr_output=sr_output).to(device),
             'CrossAttentionUNetSR': lambda: CrossAttentionUNetSR(n_classes=n_classes, n_channels=n_channels).to(device),
             'FCNResNet': lambda: FCNResnet(n_channels=n_channels, n_classes=n_classes).to(device),
-            'ESRT': lambda: ESRT(n_channels=n_channels, n_classes=None, upscale=16).to(device),
+            'ESRT': lambda: ESRT(n_channels=3, n_classes=None, upscale=16).to(device),
             'ESSRT': lambda: ESRT(n_channels=n_channels, n_classes=n_classes, upscale=scale_factor).to(device),
             'FoundationModel': lambda: FoundationModel(n_channels=n_channels, n_classes=n_classes, upscale_factor=scale_factor).to(device),
             'SCNet': lambda: SCNet(in_channels_Y=n_channels, in_channels_alpha=5 if n_channels==13 else 4, n_classes=n_classes, scale_factor=scale_factor).to(device),
