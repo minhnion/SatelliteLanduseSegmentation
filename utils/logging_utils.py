@@ -48,8 +48,7 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
 
         # Plot input image
         axs[0].set_title(f'Input {i+1}')
-        print(f"Input {i+1} shape: {inputs[i].shape}")
-        image = inputs[i].transpose(1, 2, 0)[:, :, :3]
+        image = inputs[i].transpose(1, 2, 0)[:, :, :3] if inputs[i].shape[0] == 13 else inputs[i].transpose(1, 2, 0)[:, :, 4:1:-1]
         divise_factor = np.max(image) if not np.issubdtype(image.dtype, np.integer) else 2 ** int(np.ceil(np.log2(np.max(image))))
         image = (image / divise_factor).astype(float)
         axs[0].imshow(image)
@@ -58,8 +57,6 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
 
         if sr_images is not None:
             axs[idx].set_title(f'SR Images {i+1}')
-            print(f"\nSR Image {i+1} shape: {sr_images[i].shape}")
-            print(f"\nMax: {np.max(sr_images[i])}, Min: {np.min(sr_images[i])}")
             sr_image = sr_images[i].transpose(1, 2, 0)[:, :, :3]
             sr_image = np.nan_to_num(sr_image)
             # Clip values to be between 0 and 1
@@ -70,7 +67,6 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
 
         if groundtruths is not None:
             axs[idx].set_title(f'Groundtruth {i+1}')
-            print(f"\nGroundtruth {i+1} shape: {groundtruths[i].shape}")
             groundtruth = groundtruths[i].transpose(1, 2, 0)[:, :, :3]
             groundtruth = np.nan_to_num(groundtruth)
             # Clip values to be between 0 and 1
