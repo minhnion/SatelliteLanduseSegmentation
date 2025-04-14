@@ -23,8 +23,8 @@ import torch.nn as nn
 from datetime import datetime
 from layers.unet_layers import *
 
-from utils.trainer import train, train_sr_seg, train_scnet
-from utils.evaluator import evaluate_on_test_set, evaluate_sr_seg_on_test_set, evaluate_scnet_on_test_set
+from utils.trainer import train, train_sr_seg, train_scnet, train_sr_only
+from utils.evaluator import evaluate_on_test_set, evaluate_sr_seg_on_test_set, evaluate_scnet_on_test_set, evaluate_sr_on_test_set
 from utils.model_utils import init_weights_he
 import os
 import wandb
@@ -39,6 +39,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 if __name__ == "__main__":
     sr_seg_models = ['ESSRT', 'FoundationModel', 'FoundationKDModel', 'FoundationKDModelHR', 'UNetSR', 'CrossAttentionUNetSR', 'SCNet', 'LSKNet', 'PyramidMamba']
+    sr_only_models = ['ESRT']
     try:
         os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
         # Load environment variables from .env file
@@ -153,7 +154,7 @@ if __name__ == "__main__":
         print("model loaded")
         if args.model =='FoundationKDModelHR':
             train_loader, val_loader, test_loader = load_hr_dataloader(batch_size=args.batch_size, classes=classes, RGB_TO_CLASSES=RGB_TO_CLASSES, root_dir=dataset_dir, size=size, num_tiles=num_tiles, scale_factor=16)
-        elif args.model in sr_seg_models:
+        elif args.model in sr_seg_models or args.model in sr_only_models:
             print("Sr + Seg model")
             train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, classes=classes, RGB_TO_CLASSES=RGB_TO_CLASSES, root_dir=dataset_dir, size=size, mask_scale=mask_scale, num_tiles=num_tiles, scale_factor=scale_factor)
         else:
@@ -186,6 +187,9 @@ if __name__ == "__main__":
         elif args.model == 'SCNet':
             model = train_scnet(model, train_loader, val_loader, optimizer, scheduler, criterion_seg, classes, device, l1_lambda=0, num_epochs=num_epochs, save_path=weight_path + 'weight.pth', image_dir=image_path, early_stop=False, patience=30)
             evaluate_scnet_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=image_path, num_samples=1)
+        elif args.model in sr_only_models:
+            model = train_sr_only(model, train_loader, val_loader, optimizer, scheduler, criterion_sr, classes, device, l1_lambda=0, num_epochs=num_epochs, save_path=weight_path + 'weight.pth', image_dir=image_path, early_stop=False, patience=30)
+            evaluate_sr_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=image_path, num_samples=1)
         else:
             model = train(model, train_loader, val_loader, optimizer, scheduler, criterion_seg, classes, device, l1_lambda=0, num_epochs=num_epochs, save_path=weight_path + 'weight.pth', image_dir=image_path, early_stop=False, patience=30)
             evaluate_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=image_path, num_samples=1)
