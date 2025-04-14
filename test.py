@@ -47,7 +47,8 @@ if __name__ == "__main__":
         # Initialize
         set_seed(20)
         args = parse_args()
-        device = torch.device("cuda:" + str(args.gpu_id)) if args.cuda else torch.device("cpu")
+        # device = torch.device("cuda:" + str(args.gpu_id)) if args.cuda else torch.device("cpu")
+        device = "cpu"
         print(f"Using device: {device}")
 
         WANDB_API_KEY = os.getenv('WANDB_API_KEY')

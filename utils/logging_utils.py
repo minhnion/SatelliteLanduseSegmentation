@@ -47,6 +47,7 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
 
         # Plot input image
         axs[0].set_title(f'Input {i+1}')
+        print(f"Input {i+1} shape: {inputs[i].shape}")
         image = inputs[i].transpose(1, 2, 0)[:, :, :3]
         divise_factor = np.max(image) if not np.issubdtype(image.dtype, np.integer) else 2 ** int(np.ceil(np.log2(np.max(image))))
         image = (image / divise_factor).astype(float)
@@ -56,6 +57,7 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
 
         if sr_images is not None:
             axs[idx].set_title(f'SR Images {i+1}')
+            print(f"SR Image {i+1} shape: {sr_images[i].shape}")
             sr_image = sr_images[i].transpose(1, 2, 0)[:, :, 4:1:-1]
             sr_image = np.nan_to_num(sr_image)
             sr_image = (sr_image * 255).astype(np.int64)
