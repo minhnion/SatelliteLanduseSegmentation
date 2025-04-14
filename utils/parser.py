@@ -17,6 +17,7 @@ def parse_args():
             'UNetSR',
             'CrossAttentionUNetSR',
             'FCNResNet',
+            'ESRT',
             'ESSRT',
             'FoundationModel',
             'SCNet',
