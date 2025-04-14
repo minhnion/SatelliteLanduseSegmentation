@@ -65,13 +65,13 @@ class ViT(nn.Module):
         return x
 
 class UNetSR(nn.Module):
-    def __init__(self, n_classes, n_channels=3, bilinear=True, sr_cat=False, sr_pretrained=True):
+    def __init__(self, n_classes, n_channels=3, bilinear=True, sr_output=False, sr_cat=False):
         super(UNetSR, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
+        self.sr_output = sr_output
         self.sr_cat = sr_cat
-        self.sr_pretrained = sr_pretrained
 
         # Encoder (Contracting Path)
         self.inc = DoubleConv(n_channels, 64)
@@ -90,27 +90,8 @@ class UNetSR(nn.Module):
 
         self.down_encode = Down(512, 512) # SR Encode
 
-        if self.sr_pretrained:
-            self.sr = ESRT(n_blocks=1, n_channels=4, upscale=2, encoder_only=True)
-            checkpoint_path = 'model/ESRT/epoch_10.pth'
-            checkpoint = torch.load(checkpoint_path)
-            self.sr.load_state_dict(checkpoint, strict=False)
-
-            modules_head = [default_conv(n_channels, 32, 3)]
-            self.sr.head = nn.Sequential(*modules_head)
-
-            modules_tail = [
-                Upsampler(default_conv, scale=2 , n_feats=32, act=False),
-                default_conv(in_channels=32, out_channels=n_channels, kernel_size=3)
-            ]
-
-            up = nn.Sequential(Upsampler(default_conv,scale=2,n_feats=32,act=False),
-                              BasicConv(32, n_channels,kernel_size=3,stride=1,padding=1))
-
-            self.sr.up = up
-            self.sr.tail = nn.Sequential(*modules_tail)
-            # self.sr.freeze_layers(freeze_head=False, freeze_body=True, freeze_tail=False)
-
+        if self.sr_output:
+            self.sr = ESRT(n_blocks=1, n_channels=n_channels, upscale=2, encoder_only=False)
         else:
             self.sr = ESRT(n_blocks=1, n_channels=n_channels, upscale=2, encoder_only=True)
 
@@ -127,25 +108,36 @@ class UNetSR(nn.Module):
         self.outc = OutConv(64, n_classes)
 
     def forward(self, x):
-        x1 = self.inc(x)
-        x2 = self.down1(x1)
-        x3 = self.down2(x2)
-        x4 = self.down3(x3)
-        x5 = self.down4(x4)
-        # print(x5.shape)
+        # Encoder (Contracting Path)
+        if self.sr_output:
+            x = self.sr(x)
+            x1 = self.inc(x)
+            x2 = self.down1(x1)
+            x3 = self.down2(x2)
+            x4 = self.down3(x3)
+            x5 = self.down4(x4)
+            x_before_vit = self.down_encode(x5)
 
-        # SR Path
-        x_sr = self.sr(x)
-        x_sr1 = self.down_sr1(x_sr)
-        x_sr2 = self.down_sr2(x_sr1)
-        x_sr3 = self.down_sr3(x_sr2)
-        x_sr4 = self.down_sr4(x_sr3)
-        if self.sr_cat:
-            x_cat = torch.cat((x5, x_sr4), dim=1)
-            x_before_vit = self.down_cat(x_cat)
         else:
-            x_before_vit = x5 + x_sr4
-        # print(x_before_vit.shape)
+            x1 = self.inc(x)
+            x2 = self.down1(x1)
+            x3 = self.down2(x2)
+            x4 = self.down3(x3)
+            x5 = self.down4(x4)
+            # print(x5.shape)
+
+            # SR Path
+            x_sr = self.sr(x)
+            x_sr1 = self.down_sr1(x_sr)
+            x_sr2 = self.down_sr2(x_sr1)
+            x_sr3 = self.down_sr3(x_sr2)
+            x_sr4 = self.down_sr4(x_sr3)
+            if self.sr_cat:
+                x_cat = torch.cat((x5, x_sr4), dim=1)
+                x_before_vit = self.down_cat(x_cat)
+            else:
+                x_before_vit = x5 + x_sr4
+            # print(x_before_vit.shape)
 
         #applying Vision Transformer
         x6 = self.vit(x_before_vit)

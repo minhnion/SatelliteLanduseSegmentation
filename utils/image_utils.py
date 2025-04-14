@@ -5,26 +5,66 @@ import numpy as np
 import torch
 import cv2
 import rasterio
+import torch.nn.functional as F
 
-def class_to_rgb(class_mask):
-    # Create an RGB image with the same dimensions as the class mask
-    rgb_mask = np.zeros((class_mask.shape[0], class_mask.shape[1], 3), dtype=np.uint8)
+import numpy as np
 
-    # Map class indices back to RGB values
-#     rgb_mask[class_mask == 0] = [0, 0, 255]      # bamboo
-#     rgb_mask[class_mask == 5] = [0, 0, 0]        # unknown
-    rgb_mask[class_mask == 0] = [0, 0, 0]      # unknown
-    rgb_mask[class_mask == 1] = [0, 255, 0]      # forest
-    rgb_mask[class_mask == 2] = [255, 0, 0]      # rice_field
-    rgb_mask[class_mask == 3] = [0, 255, 255]    # water
-    rgb_mask[class_mask == 4] = [255, 255, 0]    # residential
+import numpy as np
+
+# Define the mapping from RGB colors to class indices
+# RGB_TO_CLASSES = {
+#     (0, 0, 0): 0,         # unidentifiable
+#     (255, 255, 255): 0,   # unidentifiable (alternative)
+#     (0, 0, 255): 0,       # lightly_vegetated -> treated as unidentifiable
+#     (0, 255, 0): 1,       # forest
+#     (255, 0, 0): 2,       # rice_field
+#     (0, 255, 255): 3,     # water
+#     (255, 255, 0): 4,     # residential
+# }
+
+# RGB_TO_CLASSES = {
+#     (0, 255, 255): 0,    # Urban land
+#     (255, 255, 0): 1,    # Agriculture land
+#     (255, 0, 255): 2,    # Rangeland
+#     (0, 255, 0): 3,      # Forest land
+#     (0, 0, 255): 4,      # Water
+#     (255, 255, 255): 5,  # Barren land
+#     (0, 0, 0): 6         # Unknown
+# }
+
+# Generate CLASS_TO_RGB with unique class representatives
+# CLASS_TO_RGB = {}
+# for rgb, class_idx in RGB_TO_CLASSES.items():
+#     if class_idx not in CLASS_TO_RGB:
+#         CLASS_TO_RGB[class_idx] = rgb  # Store only the first encountered RGB value
+
+def rgb_to_class(mask, RGB_TO_CLASSES, classes: list):
+    """Convert an RGB mask to a class index mask."""
+    h, w, _ = mask.shape
+
+    # Apply mapping dynamically
+    class_mask = np.zeros((h, w), dtype=np.uint8)
+
+    # Apply mapping dynamically
+    for rgb, class_name in RGB_TO_CLASSES.items():
+        class_mask[np.all(mask == rgb, axis=-1)] = classes.index(class_name)
+
+    return class_mask
+
+def class_to_rgb(class_mask, CLASSES_TO_RGB, classes: list):
+    """Convert a class index mask to an RGB image."""
+    h, w = class_mask.shape
+    rgb_mask = np.zeros((h, w, 3), dtype=np.uint8)
+
+    for class_name, rgb in CLASSES_TO_RGB.items():
+        rgb_mask[class_mask == classes.index(class_name)] = rgb
 
     return rgb_mask
 
-def open_tif_image(tiff_file, rgb_only=False):
+def open_tif_image(tiff_file):
     try:
         with rasterio.open(tiff_file) as src:
-            image = src.read([1, 2, 3]) if rgb_only else src.read()
+            image = src.read()
             image = np.nan_to_num(image)  # Replace NaN values with 0
             image = np.transpose(image, (1, 2, 0))
             image_max = np.max(image)
@@ -64,70 +104,146 @@ def split_image(image: np.ndarray, num_tiles: int, tile_idx: int) -> np.ndarray:
 
     return flat_tiles[tile_idx]
 
-class ResizeAndToClassTransform:
-    def __init__(self, size, augment=False):
-        self.size = size
-        self.augment = augment
+def downscale_image(image: np.ndarray, scale_factor: int) -> np.ndarray:
+    """
+    Downscale an image using bicubic interpolation while handling CHW format.
 
-    def rgb_to_class(self, mask):
-        class_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.uint8)
+    Parameters:
+        image (np.ndarray): The input image in (C, H, W) format.
+        scale_factor (int): The scaling factor (e.g., 2 for half size).
 
-        # Convert RGB mask values to class indices (adapt your mapping here)
-        class_mask[(mask == [0, 0, 255]).all(axis=2)] = 0  # bamboo
-        class_mask[(mask == [0, 255, 0]).all(axis=2)] = 1  # forest
-        class_mask[(mask == [255, 0, 0]).all(axis=2)] = 2  # rice_field
-        class_mask[(mask == [0, 255, 255]).all(axis=2)] = 3  # water
-        class_mask[(mask == [255, 255, 0]).all(axis=2)] = 4  # residential
-        class_mask[(mask == [0, 0, 0]).all(axis=2)] = 0  # unknown
-        return class_mask
+    Returns:
+        np.ndarray: The downscaled image in (C, H', W') format.
+    """
+    # Convert numpy array to PyTorch tensor
+    image_tensor = torch.from_numpy(image).float()  # (C, H, W)
 
-    def augment_image_and_mask(self, image, mask):
-        # Convert NumPy arrays to PyTorch tensors
-        image_tensor = torch.from_numpy(image).permute(2, 0, 1)  # (C, H, W)
-        mask_tensor = torch.from_numpy(np.array(mask))  # (H, W)
+    # Downscale using PyTorch's interpolate
+    downscaled_tensor = F.interpolate(
+        image_tensor.unsqueeze(0),  # Add batch dimension
+        scale_factor=1 / scale_factor,
+        mode='bicubic',
+        align_corners=False,
+        recompute_scale_factor=True
+    ).squeeze(0)  # Remove batch dimension
 
-        # Apply augmentations to both image and mask
-        if self.augment:
-            # Random horizontal flip
-            if torch.rand(1).item() > 0.5:
-                image_tensor = hflip(image_tensor)
-                mask_tensor = hflip(mask_tensor)
+    # Convert back to numpy array
+    downscaled_image = downscaled_tensor.numpy()
 
-            # Random vertical flip
-            if torch.rand(1).item() > 0.5:
-                image_tensor = vflip(image_tensor)
-                mask_tensor = vflip(mask_tensor)
+    return downscaled_image
 
-        # Convert tensors back to NumPy arrays (C, H, W -> H, W, C for image)
-        image = image_tensor.permute(1, 2, 0).numpy()
-        mask = Image.fromarray(mask_tensor.numpy().astype(np.uint8))  # Convert mask back to PIL Image
+import numpy as np
+from scipy.ndimage import sobel
 
-        return image, mask
+def compute_sobel_magnitude(image):
+    """
+    Compute the Sobel edge magnitude for a 2D image.
 
-    def __call__(self, image, mask):
-        # Ensure NaN values are handled
-        image = np.nan_to_num(image)
+    Args:
+        image (np.ndarray): 2D image array of shape (H, W).
 
-        # Augment the image
-        image, mask = self.augment_image_and_mask(image, mask)
+    Returns:
+        np.ndarray: Sobel magnitude array of shape (H, W).
+    """
+    dx = sobel(image, axis=0)  # Gradient along rows (vertical edges)
+    dy = sobel(image, axis=1)  # Gradient along columns (horizontal edges)
+    mag = np.sqrt(dx**2 + dy**2)  # Compute magnitude
+    return mag
 
-        # Resize the image
-        image_channel = []
-        for i in range(image.shape[2]):
-            resized_channel = cv2.resize(image[:, :, i], self.size)
-            image_channel.append(resized_channel)
+def compute_fraction_image(image):
+    """
+    Compute fraction image (soft information) for SCNet from either multispectral or RGB images.
 
-        image_resized = np.stack(image_channel, axis=-1)
+    Args:
+        image (np.ndarray): Input image with shape (C, H, W), where C is 13 for multispectral
+                            (e.g., Sentinel-2 bands) or 3 for RGB. The image should be in float format.
 
-        # Resize the mask and convert it to the appropriate format
-        mask = mask.resize(self.size, resample=Image.NEAREST)  # Resize mask
-        mask = np.array(mask).astype(np.uint8)  # Convert to NumPy array
+    Returns:
+        np.ndarray: Fraction image with shape (C', H, W), where C' is the number of features
+                    (5 for multispectral, 4 for RGB).
 
-        # Convert the RGB mask to class indices
-        mask = self.rgb_to_class(mask)
+    Raises:
+        ValueError: If the number of input channels is neither 3 nor 13.
+    """
+    # Ensure the image is in float format for accurate computations
+    if image.dtype not in (np.float32, np.float64):
+        image = image.astype(np.float32)
 
-        # Convert image and mask to tensors
-        mask = torch.tensor(mask, dtype=torch.long)
-        image = torch.from_numpy(image_resized).permute(2, 0, 1).float()  # (C, H, W)
+    # Get the number of channels
+    C = image.shape[0]
 
-        return image, mask
+    if C == 13:
+        # Multispectral image processing (e.g., Sentinel-2 with 13 bands)
+        # Band indices based on standard Sentinel-2 ordering: B1 to B12, B8A
+        B3 = image[2]   # Green
+        B4 = image[3]   # Red
+        B5 = image[4]   # Red-edge 1
+        B8 = image[7]   # NIR
+        B11 = image[10] # SWIR1
+        B12 = image[11] # SWIR2
+
+        # Compute normalized difference indices
+        # Small epsilon (1e-6) added to denominators to prevent division by zero
+        ndvi = (B8 - B4) / (B8 + B4 + 1e-6)      # Normalized Difference Vegetation Index
+        ndwi = (B3 - B8) / (B3 + B8 + 1e-6)      # Normalized Difference Water Index
+        ndbi = (B11 - B8) / (B11 + B8 + 1e-6)    # Normalized Difference Built-up Index
+        rendvi = (B8 - B5) / (B8 + B5 + 1e-6)    # Red-edge NDVI using B5
+
+        # Compute Sobel edge magnitude on the red band (B4)
+        sobel_mag = compute_sobel_magnitude(B4)
+
+        # Normalize features to [0, 1]
+        # Normalized difference indices are in [-1, 1], so scale to [0, 1]
+        features = [ndvi, ndwi, ndbi, rendvi]
+        for i, feat in enumerate(features):
+            feat = np.clip(feat, -1, 1)  # Clip to theoretical range
+            features[i] = (feat + 1) / 2  # Scale from [-1, 1] to [0, 1]
+
+        # Normalize Sobel magnitude to [0, 1] using min-max scaling
+        sobel_min = sobel_mag.min()
+        sobel_max = sobel_mag.max()
+        sobel_mag = (sobel_mag - sobel_min) / (sobel_max - sobel_min + 1e-6)
+
+        # Stack all features into a single array
+        fraction_image = np.stack(features + [sobel_mag], axis=0)  # Shape: (5, H, W)
+
+    elif C == 3:
+        # RGB image processing
+        R = image[0]  # Red channel
+        G = image[1]  # Green channel
+        B = image[2]  # Blue channel
+
+        # Compute color-based features
+        veg_like = (G - R) / (G + R + 1e-6)      # Vegetation-like feature
+        water_like = (B - G) / (B + G + 1e-6)    # Water-like feature
+
+        # Compute Sobel magnitude for each channel
+        mag_R = compute_sobel_magnitude(R)
+        mag_G = compute_sobel_magnitude(G)
+        mag_B = compute_sobel_magnitude(B)
+        # Take the maximum magnitude across channels for overall edge strength
+        sobel_mag_rgb = np.maximum(np.maximum(mag_R, mag_G), mag_B)
+
+        # Compute intensity (grayscale) and its Sobel magnitude
+        intensity = 0.299 * R + 0.587 * G + 0.114 * B  # Standard RGB to grayscale weights
+        sobel_intensity = compute_sobel_magnitude(intensity)
+
+        # Normalize features to [0, 1]
+        features = [veg_like, water_like]
+        for i, feat in enumerate(features):
+            feat = np.clip(feat, -1, 1)  # Clip to theoretical range
+            features[i] = (feat + 1) / 2  # Scale from [-1, 1] to [0, 1]
+
+        # Normalize Sobel features to [0, 1]
+        for feat in [sobel_mag_rgb, sobel_intensity]:
+            feat_min = feat.min()
+            feat_max = feat.max()
+            feat[...] = (feat - feat_min) / (feat_max - feat_min + 1e-6)
+
+        # Stack all features into a single array
+        fraction_image = np.stack(features + [sobel_mag_rgb, sobel_intensity], axis=0)  # Shape: (4, H, W)
+
+    else:
+        raise ValueError("Input image must have 3 (RGB) or 13 (multispectral) channels.")
+
+    return fraction_image

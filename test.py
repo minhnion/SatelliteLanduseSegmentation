@@ -1,128 +1,109 @@
-from tqdm import tqdm
 import torch
-from utils.seed import set_seed
-from utils.parser import parse_args
-from data.dataloader import load_dataloader, load_one_dataloader
-
-from model.ViT.model import UNet
-from model.LinkNet.model import LinkNet
-from model.PromptedVitUnet.model import PromptedVitUnet
-from model.PretrainedViT.model import PretrainedViT
-from model.PretrainedViTUNet.model import PretrainedViTUNet
-from model.UNetSR.model import UNetSR
-
-import torch.optim as optim
 import torch.nn as nn
-from datetime import datetime
-from utils.loss import DiceLoss
-from layers.unet_layers import *
+import torchvision.models as models
 
-from utils.trainer import train
-from utils.evaluator import evaluate_on_test_set
-import os
-import wandb
-from dotenv import load_dotenv
-import warnings
-from rasterio.errors import NotGeoreferencedWarning
+class FCN32s(nn.Module):
+    def __init__(self, num_classes=21):
+        """
+        Initialize the FCN-32s model based on VGG16.
 
-import shutil
+        Args:
+            num_classes (int): Number of segmentation classes (default: 21 for PASCAL VOC).
+        """
+        super(FCN32s, self).__init__()
 
-warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
+        # Load pre-trained VGG16 model
+        vgg16 = models.vgg16(pretrained=True)
 
+        # Extract the feature extractor (convolutional layers)
+        self.features = vgg16.features
+
+        # Replace the classifier with convolutional layers
+        self.fcn = nn.Sequential(
+            # FC6: Replace with 7x7 conv (originally 4096 units)
+            nn.Conv2d(512, 4096, kernel_size=7, padding=0),
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(),
+            # FC7: Replace with 1x1 conv (originally 4096 units)
+            nn.Conv2d(4096, 4096, kernel_size=1, padding=0),
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(),
+            # FC8: Replace with 1x1 conv to output num_classes
+            nn.Conv2d(4096, num_classes, kernel_size=1, padding=0)
+        )
+
+        # Upsampling layer to recover input resolution (stride 32)
+        self.upsample = nn.ConvTranspose2d(
+            num_classes,
+            num_classes,
+            kernel_size=64,
+            stride=32,
+            padding=16,
+            bias=False
+        )
+
+        # Initialize upsampling weights for bilinear interpolation
+        self._initialize_weights()
+
+    def forward(self, x):
+        """
+        Forward pass of the FCN-32s model.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, 3, H, W).
+
+        Returns:
+            torch.Tensor: Output segmentation map of shape (batch_size, num_classes, H, W).
+        """
+        # Feature extraction
+        x = self.features(x)  # Shape: (batch_size, 512, H/32, W/32)
+
+        # Fully convolutional layers
+        x = self.fcn(x)       # Shape: (batch_size, num_classes, H/32, W/32)
+
+        # Upsample to original resolution
+        x = self.upsample(x)  # Shape: (batch_size, num_classes, H, W)
+
+        return x
+
+    def _initialize_weights(self):
+        """Initialize the upsampling layer with bilinear interpolation weights."""
+        for m in self.modules():
+            if isinstance(m, nn.ConvTranspose2d):
+                assert m.kernel_size[0] == m.kernel_size[1]
+                initial_weight = self._get_upsampling_weight(
+                    m.in_channels, m.out_channels, m.kernel_size[0]
+                )
+                m.weight.data.copy_(initial_weight)
+
+    def _get_upsampling_weight(self, in_channels, out_channels, kernel_size):
+        """Generate bilinear interpolation weights for upsampling."""
+        factor = (kernel_size + 1) // 2
+        if kernel_size % 2 == 1:
+            center = factor - 1
+        else:
+            center = factor - 0.5
+        og = torch.arange(kernel_size).float()
+        filt = (1 - torch.abs(og - center) / factor)
+        weight = torch.zeros((in_channels, out_channels, kernel_size, kernel_size))
+        for i in range(in_channels):
+            for j in range(out_channels):
+                if i == j:
+                    weight[i, j] = filt.unsqueeze(0) * filt.unsqueeze(1)
+        return weight
+
+# Example usage
 if __name__ == "__main__":
-    try:
-        # os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-        # Load environment variables from .env file
-        load_dotenv()
+    # Create model instance
+    model = FCN32s(num_classes=21)
 
-        # Initialize
-        set_seed(20)
-        args = parse_args()
-        device = torch.device("cuda:" + str(args.gpu_id)) if args.cuda else torch.device("cpu")
-        print(f"Using device: {device}")
+    # Move to GPU if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
 
-        WANDB_API_KEY = os.getenv('WANDB_API_KEY')
-        wandb.login(key=WANDB_API_KEY)
+    # Test with dummy input (batch_size=1, channels=3, height=224, width=224)
+    input_tensor = torch.randn(1, 3, 224, 224).to(device)
+    output = model(input_tensor)
 
-        CFG = dict(
-            optimiser='Adam',
-            learning_rate=args.lr,
-            batch_size=args.batch_size,
-            epochs=args.epoch,
-        )
-        classes = ['unidentifiable', 'forest', 'rice_field', 'water', 'residential']
-        n_classes = len(classes)
-        # base_path = 'sentinel_dataset'
-        base_path = 'new_13bands_dataset_splitted'
-        n_channels = 13 # for new dataset, n_channels = 4
-        root_dir = f'/mnt/henryng/{base_path}'
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        weight_path = f"/mnt/anhtn/log/weights/dataset:{base_path}/model:{args.model}/epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_datetime:{timestamp}/"
-        image_path =  f"/mnt/anhtn/log/images/dataset:{base_path}/model:{args.model}/epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_datetime:{timestamp}/"
-        if not os.path.exists(weight_path):
-            os.makedirs(weight_path)
-        if not os.path.exists(image_path):
-            os.makedirs(image_path)
-
-        rgb_only = False
-        model = None
-        sr_cat = False
-
-        h_w = 128
-        size = (h_w, h_w)
-        if args.model == 'LinkNet':
-            model = LinkNet(n_classes=n_classes, n_channels=n_channels).to(device)
-        elif args.model == 'ViTUnet':
-            model = UNet(n_classes=n_classes, n_channels=n_channels, depth=args.depth, heads=args.heads, dropout=args.dropout).to(device)
-        elif args.model == 'PretrainedViT':
-            size = (224, 224)
-            model = PretrainedViT(n_classes=n_classes).to(device)
-        elif args.model == 'PretrainedViTUNet':
-            model = PretrainedViTUNet(n_channels=5, n_classes=n_classes)
-            model.load_state_dict(torch.load('model/PretrainedViTUNet/best_pretrained_13bands_100e_model.pth'))
-            model.inc = DoubleConv(n_channels, 64)
-            model.to(device)
-        elif args.model == 'PromptedViTUnet':
-            model = PromptedVitUnet(n_classes=n_classes, n_channels=n_channels, depth=args.depth, heads=args.heads, dropout=args.dropout).to(device)
-        elif args.model == 'UNetSR':
-            model = UNetSR(n_classes=n_classes, n_channels=n_channels, sr_cat=sr_cat).to(device)
-            checkpoint = 'model/ViT/current_pretrained_unet_model.pth'
-            model.load_state_dict(torch.load(checkpoint),strict=False)
-
-        print("model loaded")
-        train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, root_dir=root_dir, size=size, rgb_only=rgb_only)
-        print("dataloader loaded")
-
-        optimizer = optim.Adam(model.parameters(), lr=args.lr)
-        criterion = nn.CrossEntropyLoss(ignore_index=0)
-        # weight = torch.Tensor([0.0, 1.0, 1.0, 1.5, 1.0]).to(device)
-        # criterion = DiceLoss(weight=weight)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
-        torch.cuda.empty_cache()
-
-        run = wandb.init(
-            entity='mingixpt-hust',
-            project=os.path.basename(root_dir),
-            config=CFG,
-            save_code=True,
-            job_type='train',
-            group = f'{args.model}',
-            name=f'model:{args.model}_epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}_cat?:{sr_cat}_datetime:{timestamp}'
-        )
-        # model = train(model, train_loader, val_loader, optimizer, scheduler, criterion, classes, device, num_epochs=args.epoch, save_path=weight_path + 'best_weight.pth', image_dir=image_path, early_stop=True, patience=20)
-        evaluate_on_test_set(model, test_loader, classes, image_dir=image_path)
-
-        # model_path = '/mnt/anhtn/log/weights/dataset:gg_earth_cut64_dataset_model:ViTUnet_epoch:200_bs:16_lr:0.0001_datetime:20241130_015542/best_weight.pth'
-        # model.load_state_dict(torch.load(model_path, weights_only=True))
-        # infer_loader = load_one_dataloader(batch_size=args.batch_size, root_dir=root_dir)
-        # evaluate_on_test_set(model, infer_loader, classes, image_dir=image_path)
-        run.finish()
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        if os.path.exists(weight_path):
-            shutil.rmtree(weight_path)
-        if os.path.exists(image_path):
-            shutil.rmtree(image_path)
-        raise
+    print(f"Input shape: {input_tensor.shape}")
+    print(f"Output shape: {output.shape}")  # Should be (1, 21, 224, 224)

@@ -1,6 +1,7 @@
 BATCH_SIZE=16
-LR=0.00005
+LR=0.0001
 EPOCH=10
-PRETRAINED=/mnt/anhtn/log/weights/dataset:new_13bands_dataset_splitted/model:UNetSR/epoch:40_bs:4_lr:0.0001_datetime:20250222_214304/best_weight.pth
+DATASET=deepglobe
+PRETRAINED=model/UNetSR/best_sr_first.pth
 
-python main.py --cuda --model=UNetSR --gpu_id=0 --lr=$LR --epoch=$EPOCH --batch_size=$BATCH_SIZE --pretrained=$PRETRAINED
+python main.py --cuda --model=UNetSR --gpu_id=0 --lr=$LR --epoch=$EPOCH --batch_size=$BATCH_SIZE --pretrained=$PRETRAINED --dataset=$DATASET

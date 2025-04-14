@@ -1,0 +1,2 @@
+Model size: 336.20 MB
+Peak GPU memory usage: 1899.50 MB

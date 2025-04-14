@@ -22,7 +22,7 @@ n_classes = len(classes)
 
 def inference_image(device, input_path, patch_size, output_path, model):
 
-    image = open_tif_image(input_path, rgb_only=False)
+    image = open_tif_image(input_path)
 
     infered_image = infer_patches(model, device, image.shape, image, patch_size)
 

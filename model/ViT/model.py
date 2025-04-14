@@ -69,12 +69,12 @@ class UNet(nn.Module):
         self.bilinear = bilinear
 
         # Encoder (Contracting Path)
-        self.inc = DoubleConv(n_channels, 64)
-        self.down1 = Down(64, 128)
-        self.down2 = Down(128, 256)
-        self.down3 = Down(256, 512)
+        self.inc = DoubleConv(n_channels, 64) # (B, 64, H, W)
+        self.down1 = Down(64, 128) # (B, 128, H/2, W/2)
+        self.down2 = Down(128, 256) # (B, 256, H/4, W/4)
+        self.down3 = Down(256, 512) # (B, 512, H/8, W/8)
         factor = 2 if bilinear else 1
-        self.down4 = Down(512, 1024 // factor)
+        self.down4 = Down(512, 1024 // factor) # (B, 512, H/16, W/16) if bilinear else (B, 1024, H/16, W/16)
 
         # Vision Transformer block
         self.vit = ViT(image_size = 32,patch_size = 8,dim = 2048, depth = depth, heads = heads,mlp_dim = 12,channels = 512, dropout=dropout, emb_dropout=dropout)
@@ -94,7 +94,7 @@ class UNet(nn.Module):
         x2 = self.down1(x1)
         x3 = self.down2(x2)
         x4 = self.down3(x3)
-        x5 = self.down4(x4)
+        x5 = self.down4(x4) # (B, 512, H/16, W/16)
         # print(x5.shape)
 
         #applying Vision Transformer
@@ -102,7 +102,7 @@ class UNet(nn.Module):
         x6 = torch.reshape(x6,(-1,32,8,8))
         x7 = self.vit_conv(x6)
         x8 = self.vit_linear(torch.reshape(x7,(-1,512,64)))
-        x9 = torch.reshape(x8,(-1,512,32,32))
+        x9 = torch.reshape(x8,(-1,512,32,32)) # (B, 512, 32, 32)
 
         # Decoder (Expanding Path)
         x = self.up1(x9, x4)
