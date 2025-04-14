@@ -2,15 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def init_weights_he(m):
-    if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-        if m.bias is not None:
-            nn.init.constant_(m.bias, 0)
-    elif isinstance(m, nn.BatchNorm2d):
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-
 class BasicBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, kernel_size=3):
         super(BasicBlock, self).__init__()
@@ -115,9 +106,6 @@ class LinkNet(nn.Module):
         self.decoder2 = DecoderBlock(128)
         self.decoder1 = DecoderBlock(64)
         self.finalblock = FinalBlock(32, n_classes)
-
-        # Apply He initialization
-        self.apply(init_weights_he)
 
     def forward(self, x):
         out = self.initblock(x)

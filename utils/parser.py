@@ -18,7 +18,12 @@ def parse_args():
             'CrossAttentionUNetSR',
             'FCNResNet',
             'ESSRT',
-            'FoundationModel'
+            'FoundationModel',
+            'SCNet',
+            'LSKNet',
+            'PyramidMamba',
+            'FoundationKDModel',
+            'FoundationKDModelHR',
         ],
         default='ViTUnet',
         help="model to train"
@@ -33,6 +38,7 @@ def parse_args():
     parser.add_argument('--heads', type=int, default=12, help='number of heads')
     parser.add_argument('--dropout', type=float, default=0.2, help='dropout')
     parser.add_argument('--pretrained', type=str, default=None, help='use pretrained model')
+    parser.add_argument('--dataset', type=str, default='north_vn', help='dataset')
     parser.set_defaults(feature=True)
 
     return parser.parse_args()

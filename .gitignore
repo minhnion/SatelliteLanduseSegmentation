@@ -13,5 +13,7 @@ __pycache__
 layers.txt
 *.pth
 *.tif
-*.pth
 *.pyc
+*test*
+auto_git.sh
+*.log
