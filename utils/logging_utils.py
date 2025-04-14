@@ -38,6 +38,7 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
     outputs = torch.argmax(outputs, dim=1).cpu().numpy()
     masks = masks.cpu().numpy() if not isinstance(masks, np.ndarray) else masks
     sr_images = sr_images.cpu().numpy() if sr_images is not None else None
+    groundtruths = groundtruths.cpu().numpy() if groundtruths is not None else None
     num_subplots = 5 if sr_images is not None else 3
 
     samples = len(inputs) if num_samples == 'all' else num_samples
