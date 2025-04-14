@@ -39,7 +39,8 @@ def parse_args():
     parser.add_argument('--dropout', type=float, default=0.2, help='dropout')
     parser.add_argument('--pretrained', type=str, default=None, help='use pretrained model')
     parser.add_argument('--dataset', type=str, default='north_vn', help='dataset')
-    parser.add_argument('--data_log_path', type=str, default='data_log', help='data log path')
+    parser.add_argument('--data_path', type=str, default='.', help='data set path')
+    parser.add_argument('--log_path', type=str, default='.', help='logging path')
     parser.set_defaults(feature=True)
 
     return parser.parse_args()
