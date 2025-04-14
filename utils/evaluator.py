@@ -139,8 +139,8 @@ def evaluate_sr_seg_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, ima
     recall_weighted = recall_score(all_labels.numpy(), all_preds.numpy(), average='weighted', zero_division=0)
 
     # Compute per-class precision and recall
-    precision_per_class = precision_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0)
-    recall_per_class = recall_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0)
+    precision_per_class = precision_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0, labels=list(range(len(classes))))
+    recall_per_class = recall_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0, labels=list(range(len(classes))))
 
     psnr /= len(test_loader)
     ssim /= len(test_loader)
