@@ -15,3 +15,5 @@ thop
 torchsummary
 flash_attn
 scikit-image
+torchgeo
+mamba_ssm
