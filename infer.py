@@ -5,6 +5,7 @@ from utils.image_utils import open_tif_image
 from utils.infer_utils import infer_patches
 
 from model.ViT.model import UNet
+from model.Foundation.model import FoundationModel
 
 from datetime import datetime
 
@@ -47,6 +48,7 @@ if __name__ == "__main__":
         output_folder = args.output
         pretrained_path = args.pretrained
         patch_size = args.patch_size
+        model_name = args.model
 
         assert os.path.exists(input_path), f"Input path {input_path} does not exist"
         assert os.path.exists(pretrained_path), f"Pretrained path {pretrained_path} does not exist"
@@ -59,8 +61,23 @@ if __name__ == "__main__":
         # model.load_state_dict(checkpoint)
         # model = model.eval()
 
-        # Load the whole model
-        model = torch.load(pretrained_path, map_location=device)
+        # Load the model
+        if model_name == "UNet":
+            model = UNet(n_classes=n_classes, n_channels=13).to(device)
+        elif model_name == "FoundationModel":
+            model = FoundationModel(n_classes=n_classes, n_channels=13, upscale_factor=2).to(device)
+        else:
+            raise ValueError(f"Model {model_name} is not supported")
+
+        # Load the state dictionary into the model
+        checkpoint = torch.load(pretrained_path, map_location=device)
+        if isinstance(checkpoint, dict):
+            # If it's a state dictionary
+            model.load_state_dict(checkpoint)
+        else:
+            # If it's a full model
+            model = checkpoint
+
         model = model.eval()
 
         start_time = time.time()  # Start timing

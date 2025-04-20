@@ -54,4 +54,5 @@ def parse_infer_args():
     parser.add_argument("--output", type=str, help='output image path')
     parser.add_argument("--pretrained", type=str, help='pretrained model path')
     parser.add_argument("--patch_size", type=int, default=256, help='patch size')
+    parser.add_argument("--model", type=str, default='FoundationModel', help='model to use')
     return parser.parse_args()
