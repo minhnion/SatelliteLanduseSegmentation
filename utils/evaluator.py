@@ -76,6 +76,58 @@ def evaluate_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=
     wandb.log({"Confusion-matrix plot": wandb.Image(plt)})
     plt.close()
 
+def evaluate_sr_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=None, wandb_setup=True, num_samples=5):
+    assert model is not None
+    model.eval()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+
+    # class_idx_unidentifiable = classes.index('Unidentifiable')
+
+    psnr, ssim = 0.0, 0.0
+    batch_size = test_loader.batch_size
+
+    with torch.no_grad():
+        progress_bar = tqdm(test_loader, desc="Testing", leave=True)
+
+        for batch_index, (inputs, masks, lr_images, *_) in enumerate(progress_bar):
+            inputs, masks, lr_images = (
+                inputs.to(device, non_blocking=True),
+                masks.to(device, non_blocking=True),
+                lr_images.to(device, non_blocking=True)
+            )
+
+            sr_images = model(lr_images)
+
+            # Compute PSNR and SSIM efficiently
+            psnr += torch.mean(torch.tensor([
+                compute_psnr(sr.cpu().numpy(), inp.cpu().numpy()) for sr, inp in zip(sr_images, inputs)
+            ])).item()
+
+            ssim += torch.mean(torch.tensor([
+                compute_ssim(sr.cpu().numpy(), inp.cpu().numpy()) for sr, inp in zip(sr_images, inputs)
+            ])).item()
+
+            # Ignore unidentifiable class
+            # valid_mask = labels != class_idx_unidentifiable
+            # preds, labels = preds[valid_mask], labels[valid_mask]
+
+            plot_predictions(lr_images, lr_images, masks, classes=classes, epoch=1, num_samples="all", sr_images=sr_images, groundtruths=inputs, image_dir=image_dir, batch_index=batch_index, batch_size=batch_size, CLASSES_TO_RGB=CLASSES_TO_RGB)
+
+    psnr /= len(test_loader)
+    ssim /= len(test_loader)
+
+    print(f'Test PSNR: {psnr:.4f}, Test SSIM: {ssim:.4f}')
+
+    log_test = {
+        'psnr': psnr,
+        'ssim': ssim
+    }
+
+    if wandb_setup:
+        wandb.log({'Test log': log_test})
+
+
 def evaluate_sr_seg_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=None, wandb_setup=True, num_samples=5):
     assert model is not None
     model.eval()
@@ -128,7 +180,7 @@ def evaluate_sr_seg_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, ima
             all_preds.append(preds)
             all_labels.append(labels)
 
-            plot_predictions(inputs, seg_masks, masks, classes=classes, epoch=1, num_samples=1, sr_images=sr_images, image_dir=image_dir, batch_index=batch_index, batch_size=batch_size, CLASSES_TO_RGB=CLASSES_TO_RGB)
+            plot_predictions(lr_images, seg_masks, masks, classes=classes, epoch=1, num_samples="all", sr_images=sr_images, groundtruths=inputs, image_dir=image_dir, batch_index=batch_index, batch_size=batch_size, CLASSES_TO_RGB=CLASSES_TO_RGB)
 
     # Compute averages
     all_preds = torch.cat(all_preds)
@@ -139,8 +191,8 @@ def evaluate_sr_seg_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, ima
     recall_weighted = recall_score(all_labels.numpy(), all_preds.numpy(), average='weighted', zero_division=0)
 
     # Compute per-class precision and recall
-    precision_per_class = precision_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0)
-    recall_per_class = recall_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0)
+    precision_per_class = precision_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0, labels=list(range(len(classes))))
+    recall_per_class = recall_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0, labels=list(range(len(classes))))
 
     psnr /= len(test_loader)
     ssim /= len(test_loader)

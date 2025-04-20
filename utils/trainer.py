@@ -164,6 +164,159 @@ def train(model, train_loader, val_loader, optimizer,
 
     return model
 
+def train_sr_only(model, train_loader, val_loader, optimizer,
+          scheduler, criterion_sr, classes, device,
+          num_epochs=100, save_path=f'best_model.pth', l1_lambda=0.0001,
+          early_stop=True, patience=20, image_dir=None):
+
+    best_val_loss_sr = float('inf')
+    best_train_loss_sr = float('inf')
+    best_psnr = 0.0
+    best_ssim = 0.0
+
+    # class_idx_unidentifiable = classes.index('unidentifiable')
+
+    cpu_save_path = save_path.replace('.pth', '_cpu.pth')
+    early_stop_counter = 0
+    best_wts = None
+
+    wandb.watch(model, log='all', log_freq=100)
+
+    train_losses_sr, val_losses_sr = [], []
+
+    for epoch in range(num_epochs):
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        print(f"\nEpoch: {epoch+1}")
+        model.train()
+
+        running_loss_sr = 0.0
+        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}", leave=True)
+        for inputs, masks, lr_images, *_ in progress_bar:
+            inputs, masks, lr_images = (
+                inputs.to(device, non_blocking=True),
+                masks.to(device, non_blocking=True),
+                lr_images.to(device, non_blocking=True)
+            )
+
+            optimizer.zero_grad()
+
+            sr_images = model(lr_images)
+            loss_sr = criterion_sr(sr_images, inputs)
+
+            loss_sr.backward()
+            optimizer.step()
+
+            # Use .detach() to avoid storing gradients, but no need for .item() inside loop
+            running_loss_sr += loss_sr.detach()
+
+            total_running_loss = (running_loss_sr) / (progress_bar.n + 1)
+            progress_bar.set_postfix(loss=total_running_loss.item())  # Convert once
+
+        current_wts = copy.deepcopy(model.state_dict())
+
+        torch.save(current_wts, save_path.replace('best', 'current'))  # GPU-compatible
+
+        # Convert to scalar only after accumulation
+        epoch_train_loss_sr = running_loss_sr.item() / len(train_loader)
+
+        scheduler.step(epoch_train_loss_sr)
+
+        train_losses_sr.append(epoch_train_loss_sr)
+
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        # Validation
+        model.eval()
+        val_loss_sr = 0.0
+        psnr, ssim = 0.0, 0.0
+
+        progress_bar = tqdm(val_loader, desc=f"Validation epoch {epoch+1}/{num_epochs}", leave=True)
+
+        with torch.no_grad():
+            for inputs, masks, lr_images, *_ in progress_bar:
+                inputs, masks, lr_images = (
+                    inputs.to(device, non_blocking=True),
+                    masks.to(device, non_blocking=True),
+                    lr_images.to(device, non_blocking=True)
+                )
+
+                sr_images = model(lr_images)
+                loss_sr = criterion_sr(sr_images, inputs).detach()
+
+                val_loss_sr += loss_sr
+
+                # Compute PSNR and SSIM efficiently
+                psnr += torch.mean(torch.tensor([
+                    compute_psnr(sr.cpu().numpy(), inp.cpu().numpy()) for sr, inp in zip(sr_images, inputs)
+                ])).item()
+
+                ssim += torch.mean(torch.tensor([
+                    compute_ssim(sr.cpu().numpy(), inp.cpu().numpy()) for sr, inp in zip(sr_images, inputs)
+                ])).item()
+
+        epoch_val_loss_sr = val_loss_sr.item() / len(val_loader)
+
+        epoch_psnr = psnr / len(val_loader)
+        epoch_ssim = ssim / len(val_loader)
+
+        val_losses_sr.append(epoch_val_loss_sr)
+
+        # Print out all metrics
+        print("="*50)
+        print(f"Epoch {epoch + 1}")
+        print(f"Train SR Loss: {epoch_train_loss_sr:.4f}")
+        print(f"Validation SR Loss: {epoch_val_loss_sr:.4f}")
+        print(f"PSNR: {epoch_psnr:.4f}, SSIM: {epoch_ssim:.4f}")
+        print("="*50)
+
+        # Logging and Model Saving
+        log_data = {
+            "epoch": epoch + 1,
+            "train_sr_loss": epoch_train_loss_sr,
+            "val_sr_loss": epoch_val_loss_sr,
+            "val_psnr": epoch_psnr,
+            "val_ssim": epoch_ssim,
+        }
+
+        wandb.log({"Validation Metrics": log_data})
+
+        # Save Best Model
+        if epoch_val_loss_sr < best_val_loss_sr:
+            best_train_loss_sr, best_val_loss_sr = epoch_train_loss_sr, epoch_val_loss_sr
+            best_psnr, best_ssim = epoch_psnr, epoch_ssim
+            best_wts = copy.deepcopy(model.state_dict())
+
+            torch.save(best_wts, save_path)  # GPU-compatible
+            torch.save({k: v.to('cpu') for k, v in best_wts.items()}, save_path.replace(".pth", "_cpu.pth"))  # CPU-compatible
+
+            print(f"Best model saved with validation loss: {best_val_loss_sr:.4f}")
+            early_stop_counter = 0
+        else:
+            early_stop_counter += 1
+
+        # Early Stopping
+        if early_stop and early_stop_counter >= patience:
+            print(f"Early stopping at epoch {epoch + 1}")
+            break
+
+        torch.cuda.empty_cache()
+        gc.collect()
+
+    torch.cuda.empty_cache()  # Free memory after validation
+    if best_wts:
+        model.load_state_dict(best_wts)
+    else:
+        model = None
+
+    print(f"Best model -> Train SR Loss: {best_train_loss_sr:.4f}\n"
+            f"Val SR Loss: {best_val_loss_sr}\n"
+            f"Val PSNR: {best_psnr:.4f}, Val SSIM: {best_ssim:.4f}")
+
+    return model
+
 def train_sr_seg(model, train_loader, val_loader, optimizer,
           scheduler, criterion_seg, criterion_sr, classes, device,
           num_epochs=100, save_path=f'best_model.pth', l1_lambda=0.0001,

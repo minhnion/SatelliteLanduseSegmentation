@@ -32,13 +32,14 @@ def plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_di
     plt.show()
     plt.close()
 
-def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLASSES_TO_RGB, classes, num_samples=5, image_dir=None, sr_images=None):
+def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLASSES_TO_RGB, classes, num_samples=5, image_dir=None, sr_images=None, groundtruths=None):
     # Convert tensors to numpy arrays
     inputs = inputs.cpu().numpy()
     outputs = torch.argmax(outputs, dim=1).cpu().numpy()
     masks = masks.cpu().numpy() if not isinstance(masks, np.ndarray) else masks
     sr_images = sr_images.cpu().numpy() if sr_images is not None else None
-    num_subplots = 4 if sr_images is not None else 3
+    groundtruths = groundtruths.cpu().numpy() if groundtruths is not None else None
+    num_subplots = 5 if sr_images is not None else 3
 
     samples = len(inputs) if num_samples == 'all' else num_samples
     for i in range(samples):
@@ -47,7 +48,7 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
 
         # Plot input image
         axs[0].set_title(f'Input {i+1}')
-        image = inputs[i].transpose(1, 2, 0)[:, :, :3]
+        image = inputs[i].transpose(1, 2, 0)[:, :, :3] if inputs[i].shape[0] == 13 else inputs[i].transpose(1, 2, 0)[:, :, 4:1:-1]
         divise_factor = np.max(image) if not np.issubdtype(image.dtype, np.integer) else 2 ** int(np.ceil(np.log2(np.max(image))))
         image = (image / divise_factor).astype(float)
         axs[0].imshow(image)
@@ -56,10 +57,21 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
 
         if sr_images is not None:
             axs[idx].set_title(f'SR Images {i+1}')
-            sr_image = sr_images[i].transpose(1, 2, 0)[:, :, 4:1:-1]
+            sr_image = sr_images[i].transpose(1, 2, 0)[:, :, :3]
             sr_image = np.nan_to_num(sr_image)
-            sr_image = (sr_image * 255).astype(np.int64)
+            # Clip values to be between 0 and 1
+            sr_image = np.clip(sr_image, 0, 1)
             axs[idx].imshow(sr_image)
+            axs[idx].axis('off')
+            idx += 1
+
+        if groundtruths is not None:
+            axs[idx].set_title(f'Groundtruth {i+1}')
+            groundtruth = groundtruths[i].transpose(1, 2, 0)[:, :, :3]
+            groundtruth = np.nan_to_num(groundtruth)
+            # Clip values to be between 0 and 1
+            groundtruth = np.clip(groundtruth, 0, 1)
+            axs[idx].imshow(groundtruth)
             axs[idx].axis('off')
             idx += 1
 

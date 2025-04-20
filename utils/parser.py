@@ -17,6 +17,7 @@ def parse_args():
             'UNetSR',
             'CrossAttentionUNetSR',
             'FCNResNet',
+            'ESRT',
             'ESSRT',
             'FoundationModel',
             'SCNet',
@@ -39,6 +40,8 @@ def parse_args():
     parser.add_argument('--dropout', type=float, default=0.2, help='dropout')
     parser.add_argument('--pretrained', type=str, default=None, help='use pretrained model')
     parser.add_argument('--dataset', type=str, default='north_vn', help='dataset')
+    parser.add_argument('--data_path', type=str, default='.', help='data set path')
+    parser.add_argument('--log_path', type=str, default='.', help='logging path')
     parser.set_defaults(feature=True)
 
     return parser.parse_args()
@@ -51,4 +54,5 @@ def parse_infer_args():
     parser.add_argument("--output", type=str, help='output image path')
     parser.add_argument("--pretrained", type=str, help='pretrained model path')
     parser.add_argument("--patch_size", type=int, default=256, help='patch size')
+    parser.add_argument("--model", type=str, default='FoundationModel', help='model to use')
     return parser.parse_args()

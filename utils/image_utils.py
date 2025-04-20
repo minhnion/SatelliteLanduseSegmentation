@@ -67,11 +67,9 @@ def open_tif_image(tiff_file):
             image = src.read()
             image = np.nan_to_num(image)  # Replace NaN values with 0
             image = np.transpose(image, (1, 2, 0))
-            image_max = np.max(image)
-            image_min = np.min(image)
-            image = (image - image_min) / (image_max - image_min)
-            image_max = np.max(image)
-            image_min = np.min(image)
+            # image_max = np.max(image)
+            # image_min = np.min(image)
+            # image = (image - image_min) / (image_max - image_min + 1e-6)  # Normalize to [0, 1]
             if np.isnan(image).any():
                 print(f"NaN values found in image {tiff_file}")
                 raise ValueError
