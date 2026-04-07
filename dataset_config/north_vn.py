@@ -11,5 +11,5 @@ classes = {
 weights = [0.5, 1.0, 1.5, 1.0, 1.0]
 base_path = 'new_13bands_dataset_splitted'
 n_classes = 5
-n_channels = 13
-num_tiles = 6
+n_channels = 2
+num_tiles = 4

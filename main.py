@@ -166,7 +166,7 @@ if __name__ == "__main__":
         # criterion_seg = nn.CrossEntropyLoss(weight=weight)
         criterion_seg = nn.CrossEntropyLoss(weight=torch.tensor(weights).to(device))
         criterion_sr = nn.L1Loss()
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10)
         torch.cuda.empty_cache()
 
         run = wandb.init(

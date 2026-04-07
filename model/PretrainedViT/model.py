@@ -237,7 +237,7 @@ class PretrainedViT(nn.Module):
         # for param in self.encoder.parameters():
         #     param.requires_grad = True
 
-        self.model = ViT(self.encoder, in_channels=13, n_classes=n_classes)
+        self.model = ViT(self.encoder, in_channels=2, n_classes=n_classes)
 
         # Unfreeze the last 100 layers for fine-tuning
         # params = list(self.encoder.parameters())

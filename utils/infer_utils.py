@@ -22,7 +22,9 @@ def infer_patches(model, device, org_shape, image: np.ndarray, patch_size: int =
     count_map = np.zeros((org_size[0], org_size[1], n_classes), dtype=np.float32)
 
     model.eval()
-    with torch.no_grad():
+    model_dtype = next(model.parameters()).dtype
+    use_autocast = device.type == "cuda"
+    with torch.inference_mode():
         for top in range(0, image_height, stride):
             for left in range(0, image_width, stride):
                 # Ensure patch fits within bounds
@@ -36,11 +38,11 @@ def infer_patches(model, device, org_shape, image: np.ndarray, patch_size: int =
                     patch = np.pad(patch, ((0, pad_h), (0, pad_w), (0, 0)), mode='reflect')
 
                 patch = np.expand_dims(patch, axis=0)  # Add batch dim
-                patch = torch.from_numpy(patch).permute(0, 3, 1, 2).float().to(device)
+                patch = torch.from_numpy(patch).permute(0, 3, 1, 2).to(device=device, dtype=model_dtype)
 
                 # Model inference
-                # Model inference
-                output = model(patch)
+                with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=use_autocast):
+                    output = model(patch)
 
                 # Handle different output formats based on model type
                 if isinstance(output, tuple):
