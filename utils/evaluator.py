@@ -1,16 +1,76 @@
-from sklearn.metrics import precision_score, recall_score, confusion_matrix, ConfusionMatrixDisplay
-import matplotlib.pyplot as plt
+import json
+from pathlib import Path
+
+import numpy as np
 import torch
-import wandb
-from tqdm import tqdm
 
 from utils.logging_utils import plot_predictions
-from utils.metrics import compute_psnr, compute_ssim
+from utils.metrics import calculate_iou, compute_confusion_matrix, compute_precision_recall, compute_psnr, compute_ssim, normalize_confusion_matrix
 
-def evaluate_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=None, wandb_setup=True, num_samples=5):
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    class _SimpleTqdm:
+        def __init__(self, iterable=None, *args, **kwargs):
+            self.iterable = iterable
+            self.n = 0
+
+        def __iter__(self):
+            for item in self.iterable:
+                yield item
+                self.n += 1
+
+        def set_postfix(self, **kwargs):
+            return None
+
+    def tqdm(iterable=None, *args, **kwargs):
+        return _SimpleTqdm(iterable, *args, **kwargs)
+
+try:
+    import wandb
+except ImportError:
+    wandb = None
+
+
+def _write_metrics_json(metrics_path, payload):
+    if not metrics_path:
+        return
+    metrics_path = Path(metrics_path)
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    with metrics_path.open("w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=True)
+
+
+def _plot_confusion_matrix(confusion, classes, title):
+    if plt is None:
+        return None
+    fig, ax = plt.subplots(figsize=(12, 8))
+    image = ax.imshow(confusion, cmap=plt.cm.Blues)
+    ax.set_title(title)
+    ax.set_xlabel("Predicted label")
+    ax.set_ylabel("True label")
+    ax.set_xticks(range(len(classes)))
+    ax.set_yticks(range(len(classes)))
+    ax.set_xticklabels(classes, rotation=45, ha="right")
+    ax.set_yticklabels(classes)
+    for row_index in range(confusion.shape[0]):
+        for col_index in range(confusion.shape[1]):
+            value = confusion[row_index, col_index]
+            ax.text(col_index, row_index, f"{value:.2f}", ha="center", va="center", color="black")
+    fig.colorbar(image, ax=ax)
+    fig.tight_layout()
+    return fig
+
+
+def evaluate_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=None, wandb_setup=True, num_samples=5, metrics_path=None):
     assert model is not None
     model.eval()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = next(model.parameters()).device
     model.to(device)  # Ensure the model is on the correct device
 
     # class_idx_unidentifiable = classes.index('unidentifiable')
@@ -39,47 +99,50 @@ def evaluate_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=
             all_labels.extend(labels.flatten())
 
     # Precision and recall mean
-    precision = precision_score(all_labels, all_preds, average='weighted', zero_division=0)
-    recall = recall_score(all_labels, all_preds, average='weighted', zero_division=0)
+    precision, recall, precision_per_class, recall_per_class, confusion = compute_precision_recall(
+        all_labels, all_preds, len(classes)
+    )
+    iou_per_class = calculate_iou(np.array(all_preds), np.array(all_labels), len(classes))
+    mean_iou = float(np.nanmean(iou_per_class))
 
-    print(f'Test precision: {precision}, Test recall: {recall}')
+    print(f'Test precision: {precision}, Test recall: {recall}, Test mIoU: {mean_iou}')
 
     log_test = {
-        'precision': precision,
-        'recall': recall
+        'precision': float(precision),
+        'recall': float(recall),
+        'mean_iou': float(mean_iou),
     }
-
-    # Precision and recall for each class
-    precision_per_class = precision_score(all_labels, all_preds, zero_division=0, average=None, labels=list(range(len(classes))))
-    recall_per_class = recall_score(all_labels, all_preds, zero_division=0, average=None, labels=list(range(len(classes))))
 
     for i, class_name in enumerate(classes):
         # if (i==class_idx_unidentifiable):
             # continue
-        print(f'Class: {class_name} - Precision: {precision_per_class[i]:.4f}, Recall: {recall_per_class[i]:.4f}')
-        log_test[f'precision_{class_name}'] = precision_per_class[i]
-        log_test[f'recall_{class_name}'] = recall_per_class[i]
+        class_iou = float(iou_per_class[i]) if not np.isnan(iou_per_class[i]) else None
+        print(f'Class: {class_name} - Precision: {precision_per_class[i]:.4f}, Recall: {recall_per_class[i]:.4f}, IoU: {class_iou}')
+        log_test[f'precision_{class_name}'] = float(precision_per_class[i])
+        log_test[f'recall_{class_name}'] = float(recall_per_class[i])
+        log_test[f'iou_{class_name}'] = class_iou
 
     # log test
-    if wandb_setup:
+    if wandb_setup and wandb is not None:
         wandb.log({'Test log': log_test})
+    _write_metrics_json(metrics_path, log_test)
 
     # Confusion Matrix
-    plt.figure(figsize=(12, 8))
-
-    valid_classes = [cls for cls in classes if cls != 'unidentifiable']
-    cm = confusion_matrix(all_labels, all_preds, labels=list(range(len(valid_classes))), normalize='true')
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=valid_classes)
-    disp.plot(cmap=plt.cm.Blues)
-
-    plt.title("Normalized Confusion Matrix")
-    wandb.log({"Confusion-matrix plot": wandb.Image(plt)})
-    plt.close()
+    cm = normalize_confusion_matrix(confusion, normalize='true')
+    fig = _plot_confusion_matrix(cm, classes, "Normalized Confusion Matrix")
+    if fig is not None and image_dir:
+        image_dir = Path(image_dir)
+        image_dir.mkdir(parents=True, exist_ok=True)
+        fig.savefig(image_dir / "test_confusion_matrix.png")
+    if fig is not None and wandb_setup and wandb is not None:
+        wandb.log({"Confusion-matrix plot": wandb.Image(fig)})
+    if fig is not None:
+        plt.close(fig)
 
 def evaluate_sr_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=None, wandb_setup=True, num_samples=5):
     assert model is not None
     model.eval()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = next(model.parameters()).device
     model.to(device)
 
     # class_idx_unidentifiable = classes.index('Unidentifiable')
@@ -124,14 +187,14 @@ def evaluate_sr_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_d
         'ssim': ssim
     }
 
-    if wandb_setup:
+    if wandb_setup and wandb is not None:
         wandb.log({'Test log': log_test})
 
 
 def evaluate_sr_seg_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=None, wandb_setup=True, num_samples=5):
     assert model is not None
     model.eval()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = next(model.parameters()).device
     model.to(device)
 
     # class_idx_unidentifiable = classes.index('Unidentifiable')
@@ -187,12 +250,9 @@ def evaluate_sr_seg_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, ima
     all_labels = torch.cat(all_labels)
 
     # Compute overall precision and recall
-    precision_weighted = precision_score(all_labels.numpy(), all_preds.numpy(), average='weighted', zero_division=0)
-    recall_weighted = recall_score(all_labels.numpy(), all_preds.numpy(), average='weighted', zero_division=0)
-
-    # Compute per-class precision and recall
-    precision_per_class = precision_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0, labels=list(range(len(classes))))
-    recall_per_class = recall_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0, labels=list(range(len(classes))))
+    precision_weighted, recall_weighted, precision_per_class, recall_per_class, confusion = compute_precision_recall(
+        all_labels.numpy(), all_preds.numpy(), len(classes)
+    )
 
     psnr /= len(test_loader)
     ssim /= len(test_loader)
@@ -213,24 +273,21 @@ def evaluate_sr_seg_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, ima
             log_test[f'{class_name}_precision'] = precision_per_class[i].item()
             log_test[f'{class_name}_recall'] = recall_per_class[i].item()
 
-    if wandb_setup:
+    if wandb_setup and wandb is not None:
         wandb.log({'Test log': log_test})
 
     # Confusion Matrix
-    plt.figure(figsize=(12, 8))
-    cm = confusion_matrix(all_labels, all_preds, labels=list(range(len(classes))), normalize='true')
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
-    disp.plot(cmap=plt.cm.Blues)
-    plt.title("Normalized Confusion Matrix")
-    if wandb_setup:
-        wandb.log({"Confusion-matrix plot": wandb.Image(plt)})
-    plt.show()
-    plt.close()
+    cm = normalize_confusion_matrix(confusion, normalize='true')
+    fig = _plot_confusion_matrix(cm, classes, "Normalized Confusion Matrix")
+    if fig is not None and wandb_setup and wandb is not None:
+        wandb.log({"Confusion-matrix plot": wandb.Image(fig)})
+    if fig is not None:
+        plt.close(fig)
 
 def evaluate_scnet_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, image_dir=None, wandb_setup=True, num_samples=5):
     assert model is not None
     model.eval()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = next(model.parameters()).device
     model.to(device)  # Ensure the model is on the correct device
 
     # class_idx_unidentifiable = classes.index('unidentifiable')
@@ -259,8 +316,9 @@ def evaluate_scnet_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, imag
             all_labels.extend(labels.flatten())
 
     # Precision and recall mean
-    precision = precision_score(all_labels, all_preds, average='weighted', zero_division=0)
-    recall = recall_score(all_labels, all_preds, average='weighted', zero_division=0)
+    precision, recall, precision_per_class, recall_per_class, confusion = compute_precision_recall(
+        all_labels, all_preds, len(classes)
+    )
 
     print(f'Test precision: {precision}, Test recall: {recall}')
 
@@ -268,10 +326,6 @@ def evaluate_scnet_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, imag
         'precision': precision,
         'recall': recall
     }
-
-    # Precision and recall for each class
-    precision_per_class = precision_score(all_labels, all_preds, zero_division=0, average=None, labels=list(range(len(classes))))
-    recall_per_class = recall_score(all_labels, all_preds, zero_division=0, average=None, labels=list(range(len(classes))))
 
     for i, class_name in enumerate(classes):
         # if (i==class_idx_unidentifiable):
@@ -281,16 +335,13 @@ def evaluate_scnet_on_test_set(model, test_loader, classes, CLASSES_TO_RGB, imag
         log_test[f'recall_{class_name}'] = recall_per_class[i]
 
     # log test
-    if wandb_setup:
+    if wandb_setup and wandb is not None:
         wandb.log({'Test log': log_test})
 
     # Confusion Matrix
-    plt.figure(figsize=(12, 8))
-
-    cm = confusion_matrix(all_labels, all_preds, labels=list(range(len(classes))), normalize='true')
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
-    disp.plot(cmap=plt.cm.Blues)
-
-    plt.title("Normalized Confusion Matrix")
-    wandb.log({"Confusion-matrix plot": wandb.Image(plt)})
-    plt.close()
+    cm = normalize_confusion_matrix(confusion, normalize='true')
+    fig = _plot_confusion_matrix(cm, classes, "Normalized Confusion Matrix")
+    if fig is not None and wandb_setup and wandb is not None:
+        wandb.log({"Confusion-matrix plot": wandb.Image(fig)})
+    if fig is not None:
+        plt.close(fig)

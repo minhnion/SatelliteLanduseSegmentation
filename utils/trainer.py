@@ -1,28 +1,98 @@
 import copy
+import csv
+import json
+import gc
+import time
+from pathlib import Path
+
+import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
-from sklearn.metrics import precision_score, recall_score
-import wandb
-import time
-import gc
+
+try:
+    import wandb
+except ImportError:
+    wandb = None
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    class _SimpleTqdm:
+        def __init__(self, iterable=None, *args, **kwargs):
+            self.iterable = iterable
+            self.n = 0
+
+        def __iter__(self):
+            for item in self.iterable:
+                yield item
+                self.n += 1
+
+        def set_postfix(self, **kwargs):
+            return None
+
+    def tqdm(iterable=None, *args, **kwargs):
+        return _SimpleTqdm(iterable, *args, **kwargs)
+
 from utils.logging_utils import plot_metrics
-from utils.metrics import calculate_iou, compute_psnr, compute_ssim
-from tqdm import tqdm
-import numpy as np
+from utils.metrics import calculate_iou, compute_precision_recall, compute_psnr, compute_ssim
+
+
+def _append_metrics_row(csv_path, row):
+    if not csv_path:
+        return
+    csv_path = Path(csv_path)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    write_header = not csv_path.exists()
+    with csv_path.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        if write_header:
+            writer.writeheader()
+        writer.writerow(row)
+
+
+def _write_metrics_json(json_path, payload):
+    if not json_path:
+        return
+    json_path = Path(json_path)
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    with json_path.open("w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=True)
+
+
+def _wandb_watch(model, enabled):
+    if enabled and wandb is not None:
+        wandb.watch(model, log='all', log_freq=100)
+
+
+def _wandb_log(payload, enabled):
+    if enabled and wandb is not None:
+        wandb.log(payload)
+
+
+def _save_full_model_snapshots(model, save_path):
+    try:
+        torch.save(model, save_path.replace(".pth", "_full.pth"))
+        model_cpu = copy.deepcopy(model).to('cpu')
+        torch.save(model_cpu, save_path.replace(".pth", "_cpu_full.pth"))
+        del model_cpu
+    except Exception as error:
+        print(f"Error while saving full model snapshot: {error}")
 
 def train(model, train_loader, val_loader, optimizer,
           scheduler, criterion, classes, device,
           num_epochs=100, save_path=f'best_model.pth', l1_lambda=0.0001,
-          early_stop=True, patience=20, image_dir=None):
+          early_stop=True, patience=20, image_dir=None,
+          train_metrics_path=None, best_metrics_path=None, wandb_setup=True):
     best_val_loss, best_train_loss, best_model_val_precision, best_model_val_recall = float('inf'), float('inf'), float('inf'), float('inf')
+    best_model_val_miou = float('-inf')
     early_stop_counter = 0
     best_model_wts = None
 
     # class_idx_unidentifiable = classes.index('unidentifiable')
 
-    wandb.watch(model, log='all', log_freq=100)
+    _wandb_watch(model, wandb_setup)
 
     train_losses, val_losses, val_precisions, val_recalls = [], [], [], []
 
@@ -53,7 +123,6 @@ def train(model, train_loader, val_loader, optimizer,
         del inputs, masks
 
         epoch_train_loss = running_loss / len(train_loader)
-        scheduler.step(epoch_train_loss)
         train_losses.append(epoch_train_loss)
 
         torch.cuda.empty_cache()
@@ -93,25 +162,23 @@ def train(model, train_loader, val_loader, optimizer,
         all_preds = torch.cat(all_preds)
         all_labels = torch.cat(all_labels)
 
-        precision = precision_score(all_labels, all_preds, average='weighted', zero_division=0)
-        recall = recall_score(all_labels, all_preds, average='weighted', zero_division=0)
-
-        precision_per_class = torch.tensor(precision_score(
-            all_labels, all_preds, average=None, zero_division=0, labels=list(range(len(classes)))
-        ), device=device)
-
-        recall_per_class = torch.tensor(recall_score(
-            all_labels, all_preds, zero_division=0, average=None, labels=list(range(len(classes)))
-        ), device=device)
+        precision, recall, precision_per_class_np, recall_per_class_np, _ = compute_precision_recall(
+            all_labels.numpy(), all_preds.numpy(), len(classes)
+        )
+        precision_per_class = torch.tensor(precision_per_class_np, device=device)
+        recall_per_class = torch.tensor(recall_per_class_np, device=device)
+        iou_per_class = calculate_iou(all_preds.numpy(), all_labels.numpy(), len(classes))
+        mean_iou = float(np.nanmean(iou_per_class))
 
         val_precisions.append(precision)
         val_recalls.append(recall)
 
-        print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {epoch_train_loss:.4f}, Val Loss: {epoch_val_loss:.4f}, Val Precision: {precision:.4f}, Val Recall: {recall:.4f}')
+        print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {epoch_train_loss:.4f}, Val Loss: {epoch_val_loss:.4f}, Val Precision: {precision:.4f}, Val Recall: {recall:.4f}, Val mIoU: {mean_iou:.4f}')
 
         for i, class_name in enumerate(classes):
             # if i != class_idx_unidentifiable:
-                print(f'Class: {class_name} - Precision: {precision_per_class[i]:.4f}, Recall: {recall_per_class[i]:.4f}')
+                class_iou = float(iou_per_class[i]) if not np.isnan(iou_per_class[i]) else None
+                print(f'Class: {class_name} - Precision: {precision_per_class[i]:.4f}, Recall: {recall_per_class[i]:.4f}, IoU: {class_iou}')
 
         log_data = {
             "epoch": epoch + 1,
@@ -119,32 +186,47 @@ def train(model, train_loader, val_loader, optimizer,
             "val_loss": epoch_val_loss,
             "val_precision": precision,
             "val_recall": recall,
+            "val_miou": mean_iou,
         }
 
         for i, class_name in enumerate(classes):
             # if i != class_idx_unidentifiable:
                 log_data[f"{class_name}_precision"] = precision_per_class[i].item()
                 log_data[f"{class_name}_recall"] = recall_per_class[i].item()
+                log_data[f"{class_name}_iou"] = None if np.isnan(iou_per_class[i]) else float(iou_per_class[i])
 
-        wandb.log({"Train log": log_data})
+        _append_metrics_row(train_metrics_path, log_data)
+        _wandb_log({"Train log": log_data}, wandb_setup)
 
         # Save the best model
         if epoch_val_loss < best_val_loss:
             best_val_loss, best_train_loss = epoch_val_loss, epoch_train_loss
             best_model_val_precision, best_model_val_recall = precision, recall
+            best_model_val_miou = mean_iou
             best_model_wts = copy.deepcopy(model.state_dict())
 
             torch.save(best_model_wts, save_path)  # GPU-compatible
             cpu_save_path = save_path.replace(".pth", "_cpu.pth")
             torch.save({k: v.cpu() for k, v in best_model_wts.items()}, cpu_save_path)  # CPU-compatible
 
-            try:
-                torch.save(model, save_path.replace(".pth", "_full.pth"))  # Save full model
-                torch.save(model.to('cpu'), cpu_save_path.replace(".pth", "_full.pth"))  # Save CPU version
-            except Exception as e:
-                print(f"Error: {e}")
+            _save_full_model_snapshots(model, save_path)
 
             print(f"Best model saved with validation loss: {best_val_loss:.4f}")
+            best_payload = {
+                "epoch": epoch + 1,
+                "train_loss": best_train_loss,
+                "val_loss": best_val_loss,
+                "val_precision": best_model_val_precision,
+                "val_recall": best_model_val_recall,
+                "val_miou": best_model_val_miou,
+                "save_path": save_path,
+                "cpu_save_path": cpu_save_path,
+            }
+            for i, class_name in enumerate(classes):
+                best_payload[f"{class_name}_precision"] = precision_per_class[i].item()
+                best_payload[f"{class_name}_recall"] = recall_per_class[i].item()
+                best_payload[f"{class_name}_iou"] = None if np.isnan(iou_per_class[i]) else float(iou_per_class[i])
+            _write_metrics_json(best_metrics_path, best_payload)
             early_stop_counter = 0
         else:
             early_stop_counter += 1
@@ -159,7 +241,7 @@ def train(model, train_loader, val_loader, optimizer,
     else:
         model = None
 
-    print(f"Best model -> Train Loss: {best_train_loss:.4f}, Val Loss: {best_val_loss:.4f}, Precision: {best_model_val_precision:.4f}, Recall: {best_model_val_recall:.4f}")
+    print(f"Best model -> Train Loss: {best_train_loss:.4f}, Val Loss: {best_val_loss:.4f}, Precision: {best_model_val_precision:.4f}, Recall: {best_model_val_recall:.4f}, mIoU: {best_model_val_miou:.4f}")
     plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_dir=image_dir)
 
     return model
@@ -180,7 +262,7 @@ def train_sr_only(model, train_loader, val_loader, optimizer,
     early_stop_counter = 0
     best_wts = None
 
-    wandb.watch(model, log='all', log_freq=100)
+    _wandb_watch(model, wandb_setup=True)
 
     train_losses_sr, val_losses_sr = [], []
 
@@ -281,7 +363,7 @@ def train_sr_only(model, train_loader, val_loader, optimizer,
             "val_ssim": epoch_ssim,
         }
 
-        wandb.log({"Validation Metrics": log_data})
+        _wandb_log({"Validation Metrics": log_data}, enabled=True)
 
         # Save Best Model
         if epoch_val_loss_sr < best_val_loss_sr:
@@ -337,7 +419,7 @@ def train_sr_seg(model, train_loader, val_loader, optimizer,
     early_stop_counter = 0
     best_wts = None
 
-    wandb.watch(model, log='all', log_freq=100)
+    _wandb_watch(model, enabled=True)
 
     train_losses_sr, train_losses_seg, val_losses_sr, val_losses_seg, val_precisions, val_recalls = [], [], [], [], [], []
 
@@ -455,12 +537,9 @@ def train_sr_seg(model, train_loader, val_loader, optimizer,
         all_labels = torch.cat(all_labels)
 
         # Compute overall precision and recall
-        precision_average = precision_score(all_labels.numpy(), all_preds.numpy(), average='weighted', zero_division=0)
-        recall_average = recall_score(all_labels.numpy(), all_preds.numpy(), average='weighted', zero_division=0)
-
-        # Compute per-class precision and recall
-        precision_per_class = precision_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0)
-        recall_per_class = recall_score(all_labels.numpy(), all_preds.numpy(), average=None, zero_division=0)
+        precision_average, recall_average, precision_per_class, recall_per_class, _ = compute_precision_recall(
+            all_labels.numpy(), all_preds.numpy(), len(classes)
+        )
 
         # Print out all metrics
         print("="*50)
@@ -501,7 +580,7 @@ def train_sr_seg(model, train_loader, val_loader, optimizer,
                 log_data[f"precision_{classes[i]}"] = p
                 log_data[f"recall_{classes[i]}"] = r
 
-        wandb.log({"Validation Metrics": log_data})
+        _wandb_log({"Validation Metrics": log_data}, enabled=True)
 
         # Save Best Model
         if epoch_val_loss_seg < best_val_loss_seg:
@@ -552,7 +631,7 @@ def train_scnet(model, train_loader, val_loader, optimizer,
 
     # class_idx_unidentifiable = classes.index('unidentifiable')
 
-    wandb.watch(model, log='all', log_freq=100)
+    _wandb_watch(model, enabled=True)
 
     train_losses, val_losses, val_precisions, val_recalls = [], [], [], []
 
@@ -623,16 +702,11 @@ def train_scnet(model, train_loader, val_loader, optimizer,
         all_preds = torch.cat(all_preds)
         all_labels = torch.cat(all_labels)
 
-        precision = precision_score(all_labels, all_preds, average='weighted', zero_division=0)
-        recall = recall_score(all_labels, all_preds, average='weighted', zero_division=0)
-
-        precision_per_class = torch.tensor(precision_score(
-            all_labels, all_preds, average=None, zero_division=0, labels=list(range(len(classes)))
-        ), device=device)
-
-        recall_per_class = torch.tensor(recall_score(
-            all_labels, all_preds, zero_division=0, average=None, labels=list(range(len(classes)))
-        ), device=device)
+        precision, recall, precision_per_class_np, recall_per_class_np, _ = compute_precision_recall(
+            all_labels.numpy(), all_preds.numpy(), len(classes)
+        )
+        precision_per_class = torch.tensor(precision_per_class_np, device=device)
+        recall_per_class = torch.tensor(recall_per_class_np, device=device)
 
         val_precisions.append(precision)
         val_recalls.append(recall)
@@ -656,7 +730,7 @@ def train_scnet(model, train_loader, val_loader, optimizer,
                 log_data[f"{class_name}_precision"] = precision_per_class[i].item()
                 log_data[f"{class_name}_recall"] = recall_per_class[i].item()
 
-        wandb.log({"Train log": log_data})
+        _wandb_log({"Train log": log_data}, enabled=True)
 
         # Save the best model
         if epoch_val_loss < best_val_loss:
@@ -668,11 +742,7 @@ def train_scnet(model, train_loader, val_loader, optimizer,
             cpu_save_path = save_path.replace(".pth", "_cpu.pth")
             torch.save({k: v.cpu() for k, v in best_model_wts.items()}, cpu_save_path)  # CPU-compatible
 
-            try:
-                torch.save(model, save_path.replace(".pth", "_full.pth"))  # Save full model
-                torch.save(model.to('cpu'), cpu_save_path.replace(".pth", "_full.pth"))  # Save CPU version
-            except Exception as e:
-                print(f"Error: {e}")
+            _save_full_model_snapshots(model, save_path)
 
             print(f"Best model saved with validation loss: {best_val_loss:.4f}")
             early_stop_counter = 0

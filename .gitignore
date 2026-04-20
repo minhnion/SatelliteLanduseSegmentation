@@ -18,3 +18,5 @@ layers.txt
 auto_git.sh
 *.log
 *.png
+*.csv
+*.json

@@ -1,10 +1,51 @@
 import torch
-import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 
 from utils.image_utils import *
 
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
+
+
+def _normalize_channel(channel):
+    channel = np.nan_to_num(channel.astype(np.float32))
+    low, high = np.percentile(channel, [2, 98])
+    if not np.isfinite(low) or not np.isfinite(high) or high <= low:
+        high = channel.max() if channel.size else 1.0
+        low = channel.min() if channel.size else 0.0
+    scale = high - low
+    if scale <= 0:
+        return np.zeros_like(channel, dtype=np.float32)
+    return np.clip((channel - low) / scale, 0.0, 1.0)
+
+
+def _to_display_rgb(sample):
+    image = sample.transpose(1, 2, 0)
+    channels = image.shape[2]
+    if channels >= 13:
+        display = image[:, :, :3]
+        display = np.stack([_normalize_channel(display[:, :, i]) for i in range(3)], axis=-1)
+        return display
+    if channels == 2:
+        vv = _normalize_channel(image[:, :, 0])
+        vh = _normalize_channel(image[:, :, 1])
+        avg = 0.5 * (vv + vh)
+        return np.stack([vv, avg, vh], axis=-1)
+    if channels == 1:
+        gray = _normalize_channel(image[:, :, 0])
+        return np.stack([gray, gray, gray], axis=-1)
+    display = image[:, :, :min(3, channels)]
+    if display.shape[2] < 3:
+        display = np.repeat(display, 3, axis=2)[:, :, :3]
+    return np.stack([_normalize_channel(display[:, :, i]) for i in range(3)], axis=-1)
+
 def plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_dir=None):
+    if plt is None:
+        print("matplotlib is not installed; skipping train metric plot generation.")
+        return
     epochs = range(1, len(train_losses) + 1)
     plt.figure(figsize=(12, 10))
 
@@ -28,11 +69,15 @@ def plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_di
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig(image_dir + 'train_result.png')
-    plt.show()
+    if image_dir:
+        image_dir = Path(image_dir)
+        image_dir.mkdir(parents=True, exist_ok=True)
+        plt.savefig(image_dir / 'train_result.png')
     plt.close()
 
 def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLASSES_TO_RGB, classes, num_samples=5, image_dir=None, sr_images=None, groundtruths=None):
+    if plt is None:
+        return
     # Convert tensors to numpy arrays
     inputs = inputs.cpu().numpy()
     outputs = torch.argmax(outputs, dim=1).cpu().numpy()
@@ -41,16 +86,14 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
     groundtruths = groundtruths.cpu().numpy() if groundtruths is not None else None
     num_subplots = 5 if sr_images is not None else 3
 
-    samples = len(inputs) if num_samples == 'all' else num_samples
+    samples = len(inputs) if num_samples == 'all' else min(num_samples, len(inputs))
     for i in range(samples):
         fig, axs = plt.subplots(1, num_subplots, figsize=(15, 5))
         fig.suptitle(f'Epoch {epoch + 1} - Sample {i + 1}')
 
         # Plot input image
         axs[0].set_title(f'Input {i+1}')
-        image = inputs[i].transpose(1, 2, 0)[:, :, :3] if inputs[i].shape[0] == 13 else inputs[i].transpose(1, 2, 0)[:, :, 4:1:-1]
-        divise_factor = np.max(image) if not np.issubdtype(image.dtype, np.integer) else 2 ** int(np.ceil(np.log2(np.max(image))))
-        image = (image / divise_factor).astype(float)
+        image = _to_display_rgb(inputs[i])
         axs[0].imshow(image)
         axs[0].axis('off')
         idx = 1
@@ -86,5 +129,7 @@ def plot_predictions(inputs, outputs, masks, epoch, batch_size, batch_index, CLA
 
         plt.tight_layout()
         if image_dir:
-            plt.savefig(f"{image_dir}{batch_index * batch_size + i + 1}.png")
+            image_dir = Path(image_dir)
+            image_dir.mkdir(parents=True, exist_ok=True)
+            plt.savefig(image_dir / f"{batch_index * batch_size + i + 1}.png")
         plt.close()

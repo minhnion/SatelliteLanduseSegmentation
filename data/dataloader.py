@@ -1,11 +1,51 @@
 import numpy as np
+import random
+from math import ceil
 from time import time
 from torch.utils.data import DataLoader
 from data.data import LandCoverDataset, LandCoverHRDataset
 from utils.data_utils import ResizeAndToClassTransform, ResizeAndToClassHRTransform
 import os
 from glob import glob
-from sklearn.model_selection import train_test_split
+
+try:
+    from sklearn.model_selection import train_test_split as sklearn_train_test_split
+except ImportError:
+    sklearn_train_test_split = None
+
+
+def _train_test_split(*arrays, test_size, random_state=42):
+    if sklearn_train_test_split is not None:
+        return sklearn_train_test_split(*arrays, test_size=test_size, random_state=random_state)
+
+    if not arrays:
+        raise ValueError("At least one array is required for splitting")
+
+    lengths = {len(array) for array in arrays}
+    if len(lengths) != 1:
+        raise ValueError("All arrays must have the same length")
+
+    total = lengths.pop()
+    indices = list(range(total))
+    rng = random.Random(random_state)
+    rng.shuffle(indices)
+
+    if isinstance(test_size, float):
+        test_count = ceil(total * test_size)
+    else:
+        test_count = int(test_size)
+    test_count = max(1, min(total - 1, test_count))
+
+    test_indices = set(indices[:test_count])
+    train_indices = [idx for idx in indices if idx not in test_indices]
+    test_indices = [idx for idx in indices if idx in test_indices]
+
+    split_arrays = []
+    for array in arrays:
+        train_split = [array[idx] for idx in train_indices]
+        test_split = [array[idx] for idx in test_indices]
+        split_arrays.extend([train_split, test_split])
+    return tuple(split_arrays)
 
 def load_dataloader(batch_size, root_dir, RGB_TO_CLASSES, classes, size=(256,256), mask_scale=None, scale_factor=None, num_tiles=None, random_state=42):
     # print(size)
@@ -48,12 +88,12 @@ def load_dataloader(batch_size, root_dir, RGB_TO_CLASSES, classes, size=(256,256
         assert len(all_images) == len(all_masks), "Mismatch between image and mask counts"
 
         # Split into Train (70%) and Temp (30% for Val + Test)
-        train_images, temp_images, train_masks, temp_masks = train_test_split(
+        train_images, temp_images, train_masks, temp_masks = _train_test_split(
             all_images, all_masks, test_size=0.3, random_state=random_state
         )
 
         # Split Temp into Val (20%) and Test (10%)
-        val_images, test_images, val_masks, test_masks = train_test_split(
+        val_images, test_images, val_masks, test_masks = _train_test_split(
             temp_images, temp_masks, test_size=1/3, random_state=random_state
         )
 
@@ -144,11 +184,11 @@ def load_hr_dataloader(batch_size, root_dir, RGB_TO_CLASSES, classes, size=(256,
         #     temp_images, temp_masks, all_lr_images, test_size=1/3, random_state=random_state
         # )
 
-        train_images, temp_images, train_masks, temp_masks, train_lr_images, temp_lr_images = train_test_split(
+        train_images, temp_images, train_masks, temp_masks, train_lr_images, temp_lr_images = _train_test_split(
             all_images, all_masks, valid_lr_images, test_size=0.3, random_state=random_state
         )
         # Split Temp into Val (20%) and Test (10%)
-        val_images, test_images, val_masks, test_masks, val_lr_images, test_lr_images = train_test_split(
+        val_images, test_images, val_masks, test_masks, val_lr_images, test_lr_images = _train_test_split(
             temp_images, temp_masks, temp_lr_images, test_size=1/3, random_state=random_state
         )
 

@@ -6,6 +6,26 @@ import numpy as np
 import torch
 import cv2
 
+
+def _augment_numpy_image_and_mask(image, mask, augment):
+    if not augment:
+        return image, mask
+
+    if torch.rand(1).item() > 0.5:
+        image = np.flip(image, axis=1).copy()
+        mask = np.flip(mask, axis=1).copy()
+
+    if torch.rand(1).item() > 0.5:
+        image = np.flip(image, axis=0).copy()
+        mask = np.flip(mask, axis=0).copy()
+
+    k = int(torch.randint(0, 4, (1,)).item())
+    if k:
+        image = np.rot90(image, k=k, axes=(0, 1)).copy()
+        mask = np.rot90(mask, k=k, axes=(0, 1)).copy()
+
+    return image, mask
+
 class ResizeAndToClassTransform:
     def __init__(self, size, RGB_TO_CLASSES, classes, augment=False):
         self.size = size
@@ -14,25 +34,8 @@ class ResizeAndToClassTransform:
         self.augment = augment
 
     def augment_image_and_mask(self, image, mask):
-        # Convert NumPy arrays to PyTorch tensors
-        image_tensor = torch.from_numpy(image).permute(2, 0, 1).float()  # (C, H, W)
-        mask_tensor = torch.from_numpy(np.array(mask)).float()  # (H, W)
-
-        # Apply augmentations to both image and mask
-        if self.augment:
-            # Random horizontal flip
-            if torch.rand(1).item() > 0.5:
-                image_tensor = hflip(image_tensor)
-                mask_tensor = hflip(mask_tensor)
-
-            # Random vertical flip
-            if torch.rand(1).item() > 0.5:
-                image_tensor = vflip(image_tensor)
-                mask_tensor = vflip(mask_tensor)
-
-        # Convert tensors back to NumPy arrays (C, H, W -> H, W, C for image)
-        image = image_tensor.permute(1, 2, 0).numpy()
-        mask = Image.fromarray(mask_tensor.numpy().astype(np.uint8))  # Convert mask back to PIL Image
+        image, mask = _augment_numpy_image_and_mask(image, np.array(mask), self.augment)
+        mask = Image.fromarray(mask.astype(np.uint8))
         return image, mask
 
     def __call__(self, image, mask, mask_scale=None):
@@ -41,7 +44,7 @@ class ResizeAndToClassTransform:
         mask_scale = 1 if mask_scale is None else mask_scale
         mask = Image.fromarray(mask).resize(tuple(int(x * mask_scale) for x in self.size), resample=Image.NEAREST)
         # Augment the image
-        # image, mask = self.augment_image_and_mask(image, mask)
+        image, mask = self.augment_image_and_mask(image, mask)
 
         # Resize the image
         image_channel = []
@@ -75,25 +78,8 @@ class ResizeAndToClassHRTransform:
         self.augment = augment
 
     def augment_image_and_mask(self, image, mask):
-        # Convert NumPy arrays to PyTorch tensors
-        image_tensor = torch.from_numpy(image).permute(2, 0, 1).float()  # (C, H, W)
-        mask_tensor = torch.from_numpy(np.array(mask)).float()  # (H, W)
-
-        # Apply augmentations to both image and mask
-        if self.augment:
-            # Random horizontal flip
-            if torch.rand(1).item() > 0.5:
-                image_tensor = hflip(image_tensor)
-                mask_tensor = hflip(mask_tensor)
-
-            # Random vertical flip
-            if torch.rand(1).item() > 0.5:
-                image_tensor = vflip(image_tensor)
-                mask_tensor = vflip(mask_tensor)
-
-        # Convert tensors back to NumPy arrays (C, H, W -> H, W, C for image)
-        image = image_tensor.permute(1, 2, 0).numpy()
-        mask = Image.fromarray(mask_tensor.numpy().astype(np.uint8))  # Convert mask back to PIL Image
+        image, mask = _augment_numpy_image_and_mask(image, np.array(mask), self.augment)
+        mask = Image.fromarray(mask.astype(np.uint8))
         return image, mask
 
     def __call__(self, image, mask, lr_image):
@@ -101,7 +87,7 @@ class ResizeAndToClassHRTransform:
         image = np.nan_to_num(image)
 
         # Augment the image
-        # image, mask = self.augment_image_and_mask(image, mask)
+        image, mask = self.augment_image_and_mask(image, mask)
 
         # Resize the image
         image_channel = []

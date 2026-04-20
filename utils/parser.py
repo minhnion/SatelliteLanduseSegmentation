@@ -42,6 +42,11 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default='north_vn', help='dataset')
     parser.add_argument('--data_path', type=str, default='dataset', help='data set path')
     parser.add_argument('--log_path', type=str, default='.', help='logging path')
+    parser.add_argument('--experiment_name', type=str, default=None, help='optional readable run name')
+    parser.add_argument('--export_inference_path', type=str, default=None, help='optional path to export best checkpoint for inference')
+    parser.add_argument('--disable_wandb', action='store_true', help='disable Weights & Biases logging')
+    parser.add_argument('--early_stop', action='store_true', help='enable early stopping')
+    parser.add_argument('--patience', type=int, default=10, help='early stopping patience in epochs')
     parser.set_defaults(feature=True)
 
     return parser.parse_args()

@@ -1,4 +1,5 @@
 import os
+import re
 import warnings
 
 import torch
@@ -17,6 +18,44 @@ warnings.filterwarnings("ignore", category=FutureWarning)  # Add this line to ig
 
 classes = ['unidentifiable', 'forest', 'rice_field', 'water', 'residential']
 n_classes = len(classes)
+
+
+def checkpoint_to_state_dict(checkpoint):
+    if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
+        return checkpoint["state_dict"]
+    if isinstance(checkpoint, dict):
+        return checkpoint
+    if hasattr(checkpoint, "state_dict"):
+        return checkpoint.state_dict()
+    raise ValueError("Unsupported checkpoint format")
+
+
+def inspect_unet_checkpoint(checkpoint):
+    state_dict = checkpoint_to_state_dict(checkpoint)
+    if "inc.double_conv.0.weight" not in state_dict or "outc.conv.weight" not in state_dict:
+        raise ValueError("Checkpoint does not look like model.ViT.model.UNet")
+
+    n_channels = int(state_dict["inc.double_conv.0.weight"].shape[1])
+    n_classes = int(state_dict["outc.conv.weight"].shape[0])
+    depth_matches = {
+        int(match.group(1))
+        for key in state_dict
+        for match in [re.match(r"vit\.transformer\.layers\.(\d+)\.", key)]
+        if match
+    }
+    depth = (max(depth_matches) + 1) if depth_matches else 8
+
+    to_qkv_key = "vit.transformer.layers.0.0.fn.to_qkv.weight"
+    heads = 8
+    if to_qkv_key in state_dict:
+        heads = int(state_dict[to_qkv_key].shape[0] // (3 * 64))
+
+    return {
+        "n_channels": n_channels,
+        "n_classes": n_classes,
+        "depth": depth,
+        "heads": heads,
+    }
 
 
 def validate_patch_size(model_name, patch_size):
@@ -83,9 +122,24 @@ if __name__ == "__main__":
         # model.load_state_dict(checkpoint)
         # model = model.eval()
 
+        checkpoint = torch.load(pretrained_path, map_location="cpu")
+
         # Load the model
         if model_name == "UNet":
-            model = UNet(n_classes=n_classes, n_channels=13, depth=12, heads=4).to(device)
+            checkpoint_config = inspect_unet_checkpoint(checkpoint)
+            model = UNet(
+                n_classes=checkpoint_config["n_classes"],
+                n_channels=checkpoint_config["n_channels"],
+                depth=checkpoint_config["depth"],
+                heads=checkpoint_config["heads"],
+            ).to(device)
+            print(
+                "Checkpoint config -> "
+                f"n_channels: {checkpoint_config['n_channels']}, "
+                f"n_classes: {checkpoint_config['n_classes']}, "
+                f"depth: {checkpoint_config['depth']}, "
+                f"heads: {checkpoint_config['heads']}"
+            )
         elif model_name == "FoundationModel":
             from model.Foundation.model import FoundationModel
             model = FoundationModel(n_classes=n_classes, n_channels=13, upscale_factor=2).to(device)
@@ -93,13 +147,12 @@ if __name__ == "__main__":
             raise ValueError(f"Model {model_name} is not supported")
 
         # Load the state dictionary into the model
-        checkpoint = torch.load(pretrained_path, map_location=device)
         if isinstance(checkpoint, dict):
             # If it's a state dictionary
-            model.load_state_dict(checkpoint)
+            model.load_state_dict(checkpoint_to_state_dict(checkpoint))
         else:
             # If it's a full model
-            model = checkpoint
+            model = checkpoint.to(device)
 
         if device.type == "cuda":
             model = model.half()
