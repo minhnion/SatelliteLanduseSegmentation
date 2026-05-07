@@ -136,44 +136,124 @@ python infer.py \
 Output PNG se nam trong:
 - `inference_png/Resolution3x3_sentinel1_vitunet_resume_aug`
 
-## Tinh dien tich tu output infer Sentinel-1
-Script:
-- [calculate_area_sentinel1.sh](/mnt/disk1/aiotlab/anhnd2468/SatelliteLanduseSegmentation/calculate_area_sentinel1.sh)
+## Tinh dien tich
 
-Mac dinh script nay dung:
-- input PNG: `inference_png/Resolution3x3_sentinel1_vitunet_resume_aug`
-- output CSV: `area_output/Resolution3x3_sentinel1_vitunet_resume_aug`
-- province label: `mapbox/gadm_resolution_3_province_mapbox_label.json`
+Mot entry point duy nhat la `calculate_area.py` voi 2 mode:
+- `dataset`: tinh dien tich ground-truth tu `dataset/` (`*_sat.tif` + `*_mask.png`).
+- `inference`: tinh dien tich output mo hinh tu `inference_tif/` (georef) ghep voi `inference_png/<run>/` (mask), tach theo 2 mua `Dong Xuan` (`0304_2023`) va `He Thu` (`0809_2023`).
 
-Chay:
+Code nam trong package `area_calc/` (clean OOP, mỗi module 1 trach nhiem):
+- `area_calc/config.py`: bang RGB <-> class, tag mua, hang so.
+- `area_calc/geo.py`: `Province`, dien tich polygon (geodesic), dien tich pixel theo vi do, rasterize boundary.
+- `area_calc/masks.py`: doc PNG, build mask theo tung class, dien tich tu mask.
+- `area_calc/sources.py`: `DatasetSource`, `InferenceSource`, parse mua tu filename.
+- `area_calc/calculator.py`: `AreaCalculator` xu ly mot tile -> `TileResult`.
+- `area_calc/aggregator.py`: `SummaryAggregator` cong don, `ReportWriter` xuat CSV/JSON.
+- `area_calc/cli.py`: argparse + dispatch.
+
+Phuong phap (cho ca 2 mode):
+- Doc transform/CRS/bounds tu TIF.
+- Rasterize tung polygon tinh xuong grid pixel cua tile (`rasterio.features.rasterize`).
+- Diem dien tich pixel theo `meters_per_degree` tai vi do trung tam moi row khi CRS la geographic, hoac `|a*e|` khi CRS projected.
+- Dem pixel trong tung cap (province, class) tu mask, nhan voi dien tich pixel -> ra `m2`.
+
+Can co boundary:
+- `mapbox/vietnam_adm1_7provinces_2024.geojson`
+- `mapbox/vietnam_adm1_7provinces_2024_metadata.json`
+
+Neu chua co, tai bang:
+
+```bash
+python3 tools/download_vietnam_adm1_boundaries.py
+```
+
+### Dataset mode (ground truth QC)
 
 ```bash
 conda activate landuse
 cd /mnt/disk1/aiotlab/anhnd2468/SatelliteLanduseSegmentation
-bash calculate_area_sentinel1.sh
+python calculate_area.py dataset \
+  --dataset_dir dataset \
+  --output area_output/dataset_ground_truth_gadm_boundary
 ```
 
-Neu muon goi truc tiep:
+Output:
+- `summary_province_area.csv`: 7 dong, 1 dong/tinh — dien tich tung class + coverage.
+- `per_image_province_area.csv`: 1 dong/(anh, tinh).
+- `per_image_area.csv`: 1 dong/anh.
+- `coverage_summary.csv`: tong coverage toan dataset.
+- `missing_pairs.csv`, `method_metadata.json`.
+
+### Inference mode (danh gia model AI)
 
 ```bash
-python calculate_area.py \
-  --input /mnt/disk1/aiotlab/anhnd2468/SatelliteLanduseSegmentation/inference_png/Resolution3x3_sentinel1_vitunet_resume_aug \
-  --output /mnt/disk1/aiotlab/anhnd2468/SatelliteLanduseSegmentation/area_output/Resolution3x3_sentinel1_vitunet_resume_aug \
-  --province_label /mnt/disk1/aiotlab/anhnd2468/SatelliteLanduseSegmentation/mapbox/gadm_resolution_3_province_mapbox_label.json
+conda activate landuse
+cd /mnt/disk1/aiotlab/anhnd2468/SatelliteLanduseSegmentation
+python calculate_area.py inference \
+  --inference_tif_dir inference_tif/Resolution3x3 \
+  --inference_png_dir inference_png/<thu_muc_run_model> \
+  --output area_output/inference_by_boundary/<thu_muc_run_model>
 ```
 
-File ket qua quan trong:
-- `area_output/.../summary_province_area.csv`: tong dien tich tung lop theo tung `province_code`
-- `area_output/.../per_image_province_area.csv`: chi tiet theo tile
-- `area_output/.../summary_area.csv`: tong dien tich toan bo
-- `area_output/.../duplicate_tiles.csv`: cac tile trung da bi loai khi cong dien tich
+Output:
+- `summary_province_dong_xuan.csv`: 7 dong, dien tich Dong Xuan.
+- `summary_province_he_thu.csv`: 7 dong, dien tich He Thu.
+- `summary_province_by_season.csv`: 14 dong (7 tinh x 2 mua), tien pivot.
+- `summary_province_combined.csv`: 7 dong, gop ca 2 mua.
+- `per_image_province_area.csv`, `per_image_area.csv` co them cot `season_key`, `season_label`, `date_tag`.
+- `coverage_summary.csv`: tong coverage cho moi mua.
+- `missing_pairs.csv`, `method_metadata.json`.
+
+### Cot quan trong trong summary
+
+- `boundary_area_km2`: dien tich polygon tinh tu GADM.
+- `covered_area_km2`: dien tich phan tile trung trong polygon tinh.
+- `coverage_ratio_over_boundary`: `covered / boundary` (sat 1.0 la phu day).
+- `uncovered_area_km2`: phan tinh chua co tile phu.
+- `<class>_area_km2`, `<class>_area_ha`: dien tich tung class theo tinh.
+- `unknown_color_*`: pixel co RGB khong nam trong bang class (canh bao mau la).
+
+### Tuy chon them
+
+- `--all_touched`: rasterize lay het pixel cham polygon (mac dinh chi pixel center).
+- `--boundary` / `--boundary_metadata`: thay doi nguon boundary.
+
+## Visualize dataset/ de QC label bang mat
+Script:
+- [visualize_dataset_qc.py](/mnt/disk1/aiotlab/anhnd2468/SatelliteLanduseSegmentation/visualize_dataset_qc.py)
+
+Xuat top tile co ty le `Rice field` cao nhat:
+
+```bash
+conda activate landuse
+cd /mnt/disk1/aiotlab/anhnd2468/SatelliteLanduseSegmentation
+/mnt/disk1/aiotlab/envs/landuse/bin/python visualize_dataset_qc.py \
+  --mode top-rice \
+  --limit 50 \
+  --output qc_visualization/dataset_top_rice_50
+```
+
+Xuat mot vai file cu the:
+
+```bash
+/mnt/disk1/aiotlab/envs/landuse/bin/python visualize_dataset_qc.py \
+  --mode list \
+  --files Area_2024_N_o_175 Area_2024_N_o_310 \
+  --output qc_visualization/manual_check
+```
+
+Moi output gom:
+- `sar_rgb/`: anh quicklook tu Sentinel-1 `VV/VH`
+- `mask/`: mask label RGB goc
+- `overlay/`: mask label phu len anh quicklook
+- `index.csv`: duong dan output, toa do bbox, va ty le tung class trong tile
 
 ## Luong de dung nhat hien tai
 1. Train hoac resume Sentinel-1.
 2. Neu muon transfer tu checkpoint Sentinel-2 cu, chay `SOURCE=s2 bash resume_sentinel1_vitunet.sh`.
 3. Lay checkpoint tot nhat trong `inference_model/model_sentinel1_vitunet_resume_aug.pth` hoac `inference_model/model_sentinel1_vitunet_from_s2_finetune.pth`.
 4. Chay infer bang `bash infer_sentinel1.sh` hoac goi `infer.py` voi checkpoint can dung.
-5. Chay tinh dien tich bang `bash calculate_area_sentinel1.sh`.
+5. Chay tinh dien tich bang `python calculate_area.py inference --inference_png_dir inference_png/<run> --output area_output/inference_by_boundary/<run>`.
 
 ## Luu y
 - `ViTUnet` Sentinel-1 hien tai dung input `512x512` trong train.

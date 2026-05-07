@@ -20,3 +20,5 @@ auto_git.sh
 *.png
 *.csv
 *.json
+*.geojson
+*.zip
