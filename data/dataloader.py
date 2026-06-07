@@ -14,6 +14,13 @@ except ImportError:
     sklearn_train_test_split = None
 
 
+def _loader_kwargs(num_workers, pin_memory):
+    kwargs = {"num_workers": num_workers, "pin_memory": pin_memory}
+    if num_workers > 0:
+        kwargs["persistent_workers"] = True
+    return kwargs
+
+
 def _train_test_split(*arrays, test_size, random_state=42):
     if sklearn_train_test_split is not None:
         return sklearn_train_test_split(*arrays, test_size=test_size, random_state=random_state)
@@ -47,7 +54,7 @@ def _train_test_split(*arrays, test_size, random_state=42):
         split_arrays.extend([train_split, test_split])
     return tuple(split_arrays)
 
-def load_dataloader(batch_size, root_dir, RGB_TO_CLASSES, classes, size=(256,256), mask_scale=None, scale_factor=None, num_tiles=None, random_state=42):
+def load_dataloader(batch_size, root_dir, RGB_TO_CLASSES, classes, size=(256,256), mask_scale=None, scale_factor=None, num_tiles=None, random_state=42, num_workers=4, pin_memory=False):
     # print(size)
     train_transforms = ResizeAndToClassTransform(size, RGB_TO_CLASSES, classes, augment=True)
     val_test_transforms = ResizeAndToClassTransform(size, RGB_TO_CLASSES, classes, augment=False)
@@ -119,16 +126,16 @@ def load_dataloader(batch_size, root_dir, RGB_TO_CLASSES, classes, size=(256,256
                                         num_tiles=num_tiles, mask_scale=mask_scale)
 
     # Create DataLoaders
-    num_workers = 4
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    loader_kwargs = _loader_kwargs(num_workers=num_workers, pin_memory=pin_memory)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **loader_kwargs)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, **loader_kwargs)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, **loader_kwargs)
 
     print(f"Train: {len(train_dataset)}, Val: {len(val_dataset)}, Test: {len(test_dataset)}")
 
     return train_loader, val_loader, test_loader
 
-def load_hr_dataloader(batch_size, root_dir, RGB_TO_CLASSES, classes, size=(256,256), scale_factor=None, num_tiles=None, random_state=42):
+def load_hr_dataloader(batch_size, root_dir, RGB_TO_CLASSES, classes, size=(256,256), scale_factor=None, num_tiles=None, random_state=42, num_workers=4, pin_memory=False):
     # print(size)
     train_transforms = ResizeAndToClassHRTransform(size, RGB_TO_CLASSES, classes, augment=True)
     val_test_transforms = ResizeAndToClassHRTransform(size, RGB_TO_CLASSES, classes, augment=False)
@@ -214,10 +221,10 @@ def load_hr_dataloader(batch_size, root_dir, RGB_TO_CLASSES, classes, size=(256,
                                         num_tiles=num_tiles)
 
     # Create DataLoaders
-    num_workers = 4
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    loader_kwargs = _loader_kwargs(num_workers=num_workers, pin_memory=pin_memory)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **loader_kwargs)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, **loader_kwargs)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, **loader_kwargs)
 
     print(f"Train: {len(train_dataset)}, Val: {len(val_dataset)}, Test: {len(test_dataset)}")
 

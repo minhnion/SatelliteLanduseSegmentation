@@ -1,33 +1,19 @@
 #!/bin/bash
 set -euo pipefail
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-ROOT_DIR="/mnt/disk1/aiotlab/anhnd2468/SatelliteLanduseSegmentation"
-SOURCE="${SOURCE:-s1}"
-S1_PRETRAINED_DEFAULT="$ROOT_DIR/weights/datasetcfg:north_vn/data:dataset/channels:2/model:ViTUnet/run:sentinel1_vitunet_scratch/datetime:20260409_223308_epoch:100_bs:2_lr:0.0001/weight.pth"
-S2_PRETRAINED_DEFAULT="$ROOT_DIR/inference_model/model.pth"
-
-if [[ "$SOURCE" == "s2" ]]; then
-  PRETRAINED_DEFAULT="$S2_PRETRAINED_DEFAULT"
-  EXPORT_PATH_DEFAULT="$ROOT_DIR/inference_model/model_sentinel1_vitunet_from_s2_finetune.pth"
-  EXPERIMENT_NAME_DEFAULT="sentinel1_vitunet_finetune_from_s2_ckpt"
-else
-  PRETRAINED_DEFAULT="$S1_PRETRAINED_DEFAULT"
-  EXPORT_PATH_DEFAULT="$ROOT_DIR/inference_model/model_sentinel1_vitunet_resume_aug.pth"
-  EXPERIMENT_NAME_DEFAULT="sentinel1_vitunet_resume_aug"
+if [[ -n "${RESUME_CHECKPOINT:-}" ]]; then
+  exec "$ROOT_DIR/finetune_sentinel1_vitunet_from_s2_best.sh" "$@"
 fi
 
-PRETRAINED="${PRETRAINED:-$PRETRAINED_DEFAULT}"
-EXPORT_PATH="${EXPORT_PATH:-$EXPORT_PATH_DEFAULT}"
-EXPERIMENT_NAME="${EXPERIMENT_NAME:-$EXPERIMENT_NAME_DEFAULT}"
-EPOCHS="${EPOCHS:-15}"
-LR="${LR:-0.00001}"
-PATIENCE="${PATIENCE:-5}"
+if [[ -z "${RESUME_FROM_RUN:-}" && $# -gt 0 ]]; then
+  export RESUME_FROM_RUN="$1"
+fi
 
-PRETRAINED="$PRETRAINED" \
-EXPORT_PATH="$EXPORT_PATH" \
-EXPERIMENT_NAME="$EXPERIMENT_NAME" \
-EPOCHS="$EPOCHS" \
-LR="$LR" \
-PATIENCE="$PATIENCE" \
-EARLY_STOP=1 \
-bash "$ROOT_DIR/train_sentinel1_vitunet.sh"
+if [[ -n "${RESUME_FROM_RUN:-}" ]]; then
+  exec "$ROOT_DIR/continue_sentinel1_vitunet_from_run_best.sh"
+fi
+
+echo "Set RESUME_CHECKPOINT=<run>/checkpoints/latest_training_state.pth to continue an interrupted run," >&2
+echo "or pass a previous run dir / set RESUME_FROM_RUN to finetune from that run's best weights." >&2
+exit 1

@@ -80,85 +80,181 @@ def _save_full_model_snapshots(model, save_path):
     except Exception as error:
         print(f"Error while saving full model snapshot: {error}")
 
+def _state_dict_to_cpu(state_dict):
+    return {
+        key: value.detach().cpu() if torch.is_tensor(value) else value
+        for key, value in state_dict.items()
+    }
+
+
+def _extract_model_state_dict(checkpoint):
+    if isinstance(checkpoint, dict):
+        for key in ("model_state_dict", "state_dict"):
+            value = checkpoint.get(key)
+            if isinstance(value, dict):
+                return value
+    return checkpoint
+
+
+def _move_optimizer_state_to_device(optimizer, device):
+    for state in optimizer.state.values():
+        for key, value in state.items():
+            if torch.is_tensor(value):
+                state[key] = value.to(device)
+
+
+def _initial_monitor_value(monitor_metric):
+    return float('inf') if monitor_metric == 'val_loss' else float('-inf')
+
+
+def _is_better_metric(current_value, best_value, monitor_metric):
+    if monitor_metric == 'val_loss':
+        return current_value < best_value
+    if monitor_metric == 'val_miou':
+        return current_value > best_value
+    raise ValueError(f"Unsupported monitor_metric: {monitor_metric}")
+
+
+def _save_training_state(path, *, epoch, model, optimizer, scheduler, best_payload,
+                         monitor_metric, early_stop_counter, classes, epoch_metrics):
+    if not path:
+        return
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "epoch": epoch,
+        "model_state_dict": _state_dict_to_cpu(model.state_dict()),
+        "optimizer_state_dict": optimizer.state_dict() if optimizer is not None else None,
+        "scheduler_state_dict": scheduler.state_dict() if scheduler is not None else None,
+        "best": best_payload,
+        "monitor_metric": monitor_metric,
+        "early_stop_counter": early_stop_counter,
+        "classes": list(classes),
+        "epoch_metrics": epoch_metrics,
+        "saved_at_unix": time.time(),
+    }
+    torch.save(payload, path)
+
+
 def train(model, train_loader, val_loader, optimizer,
           scheduler, criterion, classes, device,
           num_epochs=100, save_path=f'best_model.pth', l1_lambda=0.0001,
           early_stop=True, patience=20, image_dir=None,
-          train_metrics_path=None, best_metrics_path=None, wandb_setup=True):
-    best_val_loss, best_train_loss, best_model_val_precision, best_model_val_recall = float('inf'), float('inf'), float('inf'), float('inf')
-    best_model_val_miou = float('-inf')
-    early_stop_counter = 0
-    best_model_wts = None
+          train_metrics_path=None, best_metrics_path=None, wandb_setup=True,
+          monitor_metric='val_loss', checkpoint_dir=None, resume_checkpoint=None,
+          save_every=0, save_full_snapshots=False):
+    if monitor_metric not in {'val_loss', 'val_miou'}:
+        raise ValueError("monitor_metric must be 'val_loss' or 'val_miou'")
 
-    # class_idx_unidentifiable = classes.index('unidentifiable')
+    save_path = str(save_path)
+    checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else Path(save_path).parent
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    latest_state_path = checkpoint_dir / 'latest_training_state.pth'
+    best_state_path = checkpoint_dir / 'best_training_state.pth'
+
+    best_val_loss = float('inf')
+    best_train_loss = float('inf')
+    best_model_val_precision = float('-inf')
+    best_model_val_recall = float('-inf')
+    best_model_val_miou = float('-inf')
+    best_monitor_value = _initial_monitor_value(monitor_metric)
+    best_payload = None
+    best_model_wts = None
+    early_stop_counter = 0
+    start_epoch = 0
+
+    if resume_checkpoint:
+        resume_path = Path(resume_checkpoint)
+        checkpoint = torch.load(resume_path, map_location='cpu')
+        if isinstance(checkpoint, dict) and isinstance(checkpoint.get('model_state_dict'), dict):
+            model.load_state_dict(checkpoint['model_state_dict'])
+            if isinstance(checkpoint.get('optimizer_state_dict'), dict):
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                _move_optimizer_state_to_device(optimizer, device)
+            if scheduler is not None and isinstance(checkpoint.get('scheduler_state_dict'), dict):
+                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            start_epoch = int(checkpoint.get('epoch', 0))
+            early_stop_counter = int(checkpoint.get('early_stop_counter', 0))
+            best_payload = checkpoint.get('best')
+            if isinstance(best_payload, dict):
+                best_monitor_value = float(best_payload.get('monitor_value', best_payload.get(monitor_metric, best_monitor_value)))
+                best_val_loss = float(best_payload.get('val_loss', best_val_loss))
+                best_train_loss = float(best_payload.get('train_loss', best_train_loss))
+                best_model_val_precision = float(best_payload.get('val_precision', best_model_val_precision))
+                best_model_val_recall = float(best_payload.get('val_recall', best_model_val_recall))
+                best_model_val_miou = float(best_payload.get('val_miou', best_model_val_miou))
+
+                previous_best_path = best_payload.get('save_path') or best_payload.get('cpu_save_path')
+                if previous_best_path and Path(previous_best_path).exists():
+                    previous_best = torch.load(previous_best_path, map_location='cpu')
+                    best_model_wts = copy.deepcopy(_extract_model_state_dict(previous_best))
+                elif Path(save_path).exists():
+                    previous_best = torch.load(save_path, map_location='cpu')
+                    best_model_wts = copy.deepcopy(_extract_model_state_dict(previous_best))
+                else:
+                    best_model_wts = copy.deepcopy(model.state_dict())
+            print(f"Resumed training state from {resume_path} at completed epoch {start_epoch}")
+        else:
+            state_dict = _extract_model_state_dict(checkpoint)
+            if not isinstance(state_dict, dict):
+                raise ValueError(f"Unsupported resume checkpoint format: {resume_path}")
+            model.load_state_dict(state_dict)
+            print(f"Loaded {resume_path} as model weights only; optimizer/scheduler state was not restored")
 
     _wandb_watch(model, wandb_setup)
 
     train_losses, val_losses, val_precisions, val_recalls = [], [], [], []
 
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         torch.cuda.empty_cache()
-        print(f"\nEpoch: {epoch+1}")
+        print(f"\nEpoch: {epoch + 1}/{num_epochs}")
         model.train()
         running_loss = 0.0
-        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}", leave=True)
+        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}", leave=True)
 
         for inputs, masks, *_ in progress_bar:
-            # torch.cuda.empty_cache()
-            inputs, masks = inputs.to(device), masks.to(device)
-            # print(f"inputs, masks: {inputs.shape}, {masks.shape}")
-            optimizer.zero_grad()
+            inputs = inputs.to(device, non_blocking=True)
+            masks = masks.to(device, non_blocking=True)
+            optimizer.zero_grad(set_to_none=True)
 
             outputs = model(inputs)
             loss = criterion(outputs, masks)
             if l1_lambda and l1_lambda > 0:
-                l1_reg = sum(param.abs().sum() for param in model.parameters())  # Faster than torch.norm(param, p=1)
+                l1_reg = sum(param.abs().sum() for param in model.parameters())
                 loss = loss + l1_lambda * l1_reg
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item()
-            progress_bar.set_postfix(loss=running_loss / (progress_bar.n + 1))  # Show avg loss
-
-        del inputs, masks
+            progress_bar.set_postfix(loss=running_loss / (progress_bar.n + 1))
 
         epoch_train_loss = running_loss / len(train_loader)
         train_losses.append(epoch_train_loss)
 
         torch.cuda.empty_cache()
 
-        # Validation
         model.eval()
         val_running_loss = 0.0
-        all_preds, all_labels = [], []  # Store as lists for memory efficiency
-
-        precision_per_class = torch.zeros(len(classes), device=device)
-        recall_per_class = torch.zeros(len(classes), device=device)
-
+        all_preds, all_labels = [], []
         progress_bar = tqdm(val_loader, desc="Validation", leave=True)
 
         with torch.no_grad():
             for inputs, masks, *_ in progress_bar:
-                inputs, masks = inputs.to(device), masks.to(device)
+                inputs = inputs.to(device, non_blocking=True)
+                masks = masks.to(device, non_blocking=True)
                 outputs = model(inputs)
                 loss = criterion(outputs, masks)
                 val_running_loss += loss.item()
 
                 preds = torch.argmax(outputs, dim=1)
-
-                # valid_mask = preds != class_idx_unidentifiable  # Mask to ignore "unidentifiable" class
-                # preds, masks = preds[valid_mask], masks[valid_mask]
-
                 all_preds.append(preds.flatten().cpu())
                 all_labels.append(masks.flatten().cpu())
 
-                progress_bar.set_postfix(loss=val_running_loss / (progress_bar.n + 1))  # Show avg loss
+                progress_bar.set_postfix(loss=val_running_loss / (progress_bar.n + 1))
 
         epoch_val_loss = val_running_loss / len(val_loader)
         val_losses.append(epoch_val_loss)
-        scheduler.step(epoch_val_loss)
 
-        # Convert to tensors at once to save memory
         all_preds = torch.cat(all_preds)
         all_labels = torch.cat(all_labels)
 
@@ -173,12 +269,20 @@ def train(model, train_loader, val_loader, optimizer,
         val_precisions.append(precision)
         val_recalls.append(recall)
 
-        print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {epoch_train_loss:.4f}, Val Loss: {epoch_val_loss:.4f}, Val Precision: {precision:.4f}, Val Recall: {recall:.4f}, Val mIoU: {mean_iou:.4f}')
+        current_monitor_value = epoch_val_loss if monitor_metric == 'val_loss' else mean_iou
+        if scheduler is not None:
+            scheduler.step(current_monitor_value)
+        current_lr = optimizer.param_groups[0].get('lr') if optimizer.param_groups else None
+
+        print(
+            f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {epoch_train_loss:.4f}, '
+            f'Val Loss: {epoch_val_loss:.4f}, Val Precision: {precision:.4f}, '
+            f'Val Recall: {recall:.4f}, Val mIoU: {mean_iou:.4f}, LR: {current_lr}'
+        )
 
         for i, class_name in enumerate(classes):
-            # if i != class_idx_unidentifiable:
-                class_iou = float(iou_per_class[i]) if not np.isnan(iou_per_class[i]) else None
-                print(f'Class: {class_name} - Precision: {precision_per_class[i]:.4f}, Recall: {recall_per_class[i]:.4f}, IoU: {class_iou}')
+            class_iou = float(iou_per_class[i]) if not np.isnan(iou_per_class[i]) else None
+            print(f'Class: {class_name} - Precision: {precision_per_class[i]:.4f}, Recall: {recall_per_class[i]:.4f}, IoU: {class_iou}')
 
         log_data = {
             "epoch": epoch + 1,
@@ -187,31 +291,35 @@ def train(model, train_loader, val_loader, optimizer,
             "val_precision": precision,
             "val_recall": recall,
             "val_miou": mean_iou,
+            "monitor_metric": monitor_metric,
+            "monitor_value": current_monitor_value,
+            "lr": current_lr,
         }
 
         for i, class_name in enumerate(classes):
-            # if i != class_idx_unidentifiable:
-                log_data[f"{class_name}_precision"] = precision_per_class[i].item()
-                log_data[f"{class_name}_recall"] = recall_per_class[i].item()
-                log_data[f"{class_name}_iou"] = None if np.isnan(iou_per_class[i]) else float(iou_per_class[i])
+            log_data[f"{class_name}_precision"] = precision_per_class[i].item()
+            log_data[f"{class_name}_recall"] = recall_per_class[i].item()
+            log_data[f"{class_name}_iou"] = None if np.isnan(iou_per_class[i]) else float(iou_per_class[i])
 
         _append_metrics_row(train_metrics_path, log_data)
         _wandb_log({"Train log": log_data}, wandb_setup)
 
-        # Save the best model
-        if epoch_val_loss < best_val_loss:
+        is_best = _is_better_metric(current_monitor_value, best_monitor_value, monitor_metric)
+        if is_best:
+            best_monitor_value = current_monitor_value
             best_val_loss, best_train_loss = epoch_val_loss, epoch_train_loss
             best_model_val_precision, best_model_val_recall = precision, recall
             best_model_val_miou = mean_iou
             best_model_wts = copy.deepcopy(model.state_dict())
 
-            torch.save(best_model_wts, save_path)  # GPU-compatible
+            torch.save(best_model_wts, save_path)
             cpu_save_path = save_path.replace(".pth", "_cpu.pth")
-            torch.save({k: v.cpu() for k, v in best_model_wts.items()}, cpu_save_path)  # CPU-compatible
+            torch.save(_state_dict_to_cpu(best_model_wts), cpu_save_path)
 
-            _save_full_model_snapshots(model, save_path)
+            if save_full_snapshots:
+                _save_full_model_snapshots(model, save_path)
 
-            print(f"Best model saved with validation loss: {best_val_loss:.4f}")
+            print(f"Best model saved by {monitor_metric}: {best_monitor_value:.4f}")
             best_payload = {
                 "epoch": epoch + 1,
                 "train_loss": best_train_loss,
@@ -219,29 +327,75 @@ def train(model, train_loader, val_loader, optimizer,
                 "val_precision": best_model_val_precision,
                 "val_recall": best_model_val_recall,
                 "val_miou": best_model_val_miou,
+                "monitor_metric": monitor_metric,
+                "monitor_value": best_monitor_value,
                 "save_path": save_path,
                 "cpu_save_path": cpu_save_path,
+                "training_state_path": str(best_state_path),
             }
             for i, class_name in enumerate(classes):
                 best_payload[f"{class_name}_precision"] = precision_per_class[i].item()
                 best_payload[f"{class_name}_recall"] = recall_per_class[i].item()
                 best_payload[f"{class_name}_iou"] = None if np.isnan(iou_per_class[i]) else float(iou_per_class[i])
             _write_metrics_json(best_metrics_path, best_payload)
+            _save_training_state(
+                best_state_path,
+                epoch=epoch + 1,
+                model=model,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                best_payload=best_payload,
+                monitor_metric=monitor_metric,
+                early_stop_counter=0,
+                classes=classes,
+                epoch_metrics=log_data,
+            )
             early_stop_counter = 0
         else:
             early_stop_counter += 1
 
+        _save_training_state(
+            latest_state_path,
+            epoch=epoch + 1,
+            model=model,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            best_payload=best_payload,
+            monitor_metric=monitor_metric,
+            early_stop_counter=early_stop_counter,
+            classes=classes,
+            epoch_metrics=log_data,
+        )
+        if save_every and save_every > 0 and (epoch + 1) % save_every == 0:
+            _save_training_state(
+                checkpoint_dir / f'epoch_{epoch + 1:04d}_training_state.pth',
+                epoch=epoch + 1,
+                model=model,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                best_payload=best_payload,
+                monitor_metric=monitor_metric,
+                early_stop_counter=early_stop_counter,
+                classes=classes,
+                epoch_metrics=log_data,
+            )
+
         if early_stop and early_stop_counter >= patience:
-            print(f"Early stopping at epoch {epoch + 1}")
+            print(f"Early stopping at epoch {epoch + 1}; no {monitor_metric} improvement for {patience} epoch(s)")
             break
 
-        torch.cuda.empty_cache()  # Only call once per epoch
-    if best_model_wts:
+        torch.cuda.empty_cache()
+
+    if best_model_wts is not None:
         model.load_state_dict(best_model_wts)
     else:
         model = None
 
-    print(f"Best model -> Train Loss: {best_train_loss:.4f}, Val Loss: {best_val_loss:.4f}, Precision: {best_model_val_precision:.4f}, Recall: {best_model_val_recall:.4f}, mIoU: {best_model_val_miou:.4f}")
+    print(
+        f"Best model -> Train Loss: {best_train_loss:.4f}, Val Loss: {best_val_loss:.4f}, "
+        f"Precision: {best_model_val_precision:.4f}, Recall: {best_model_val_recall:.4f}, "
+        f"mIoU: {best_model_val_miou:.4f}, {monitor_metric}: {best_monitor_value:.4f}"
+    )
     plot_metrics(train_losses, val_losses, val_precisions, val_recalls, image_dir=image_dir)
 
     return model

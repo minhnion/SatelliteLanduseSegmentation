@@ -38,6 +38,15 @@ def _save_json(path, payload):
         json.dump(payload, f, indent=2, ensure_ascii=True)
 
 
+def _extract_checkpoint_state_dict(checkpoint):
+    if isinstance(checkpoint, dict):
+        for key in ("model_state_dict", "state_dict"):
+            value = checkpoint.get(key)
+            if isinstance(value, dict):
+                return value
+    return checkpoint
+
+
 def _resolve_input_size(model_name):
     # This ViT-UNet variant hard-codes a ViT bottleneck that expects a 32x32 feature map
     # after 4 downsampling stages, which corresponds to a 512x512 input image.
@@ -124,12 +133,18 @@ if __name__ == "__main__":
                 )
         device = torch.device("cuda:" + str(args.gpu_id)) if use_cuda else torch.device("cpu")
         print(f"Using device: {device}")
+        if use_cuda:
+            torch.backends.cuda.matmul.allow_tf32 = bool(args.tf32)
+            torch.backends.cudnn.allow_tf32 = bool(args.tf32)
+            print(f"TF32 training kernels: {'enabled' if args.tf32 else 'disabled'}")
 
         CFG = dict(
-            optimiser='Adam',
+            optimiser=args.optimizer,
             learning_rate=args.lr,
             batch_size=args.batch_size,
             epochs=args.epoch,
+            weight_decay=args.weight_decay,
+            monitor_metric=args.monitor_metric,
         )
 
         # Load dataset config
@@ -153,31 +168,35 @@ if __name__ == "__main__":
         num_tiles = dataset_config['num_tiles']
         weights = dataset_config['weights']
 
-        # base_path = 'new_13bands_dataset_splitted'
-        root_dir = f'/mnt/hungvv/minh'
-        dataset_dir = os.path.join(root_dir,'dataset', base_path) if not args.data_path else args.data_path
-        log_path = os.path.join(root_dir, 'log') if not args.log_path else args.log_path
+        project_dir = os.path.dirname(os.path.abspath(__file__))
+        dataset_dir = args.data_path if args.data_path else os.path.join(project_dir, 'dataset', base_path)
+        log_path = args.log_path if args.log_path else project_dir
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         dataset_label = _slugify_tag(os.path.basename(os.path.abspath(dataset_dir)))
         run_label = _slugify_tag(args.experiment_name) if args.experiment_name else dataset_label
 
-        model_log_path = (
-            f'datasetcfg:{dataset}/data:{dataset_label}/channels:{n_channels}/model:{args.model}/run:{run_label}/'
-            f'datetime:{timestamp}_epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}/'
-        )
-        weight_path = os.path.join(log_path, 'weights', model_log_path)
-        image_path = os.path.join(log_path, 'images', model_log_path)
-        metrics_path = os.path.join(log_path, 'metrics', model_log_path)
+        if args.run_dir:
+            run_dir = os.path.abspath(args.run_dir)
+            weight_path = os.path.join(run_dir, 'checkpoints')
+            image_path = os.path.join(run_dir, 'images')
+            metrics_path = os.path.join(run_dir, 'metrics')
+            weight_file_path = os.path.join(weight_path, 'best_model.pth')
+        else:
+            run_dir = None
+            model_log_path = (
+                f'datasetcfg:{dataset}/data:{dataset_label}/channels:{n_channels}/model:{args.model}/run:{run_label}/'
+                f'datetime:{timestamp}_epoch:{args.epoch}_bs:{args.batch_size}_lr:{args.lr}/'
+            )
+            weight_path = os.path.join(log_path, 'weights', model_log_path)
+            image_path = os.path.join(log_path, 'images', model_log_path)
+            metrics_path = os.path.join(log_path, 'metrics', model_log_path)
+            weight_file_path = os.path.join(weight_path, 'weight.pth')
 
-        if not os.path.exists(weight_path):
-            os.makedirs(weight_path)
-        if not os.path.exists(image_path):
-            os.makedirs(image_path)
-        if not os.path.exists(metrics_path):
-            os.makedirs(metrics_path)
+        os.makedirs(weight_path, exist_ok=True)
+        os.makedirs(image_path, exist_ok=True)
+        os.makedirs(metrics_path, exist_ok=True)
 
-        weight_file_path = os.path.join(weight_path, 'weight.pth')
         train_metrics_path = os.path.join(metrics_path, 'train_metrics.csv')
         best_metrics_path = os.path.join(metrics_path, 'best_val_metrics.json')
         test_metrics_path = os.path.join(metrics_path, 'test_metrics.json')
@@ -211,11 +230,13 @@ if __name__ == "__main__":
             sr_output = True
             mask_scale = scale_factor if sr_output else None
 
+        if args.pretrained and args.resume_checkpoint:
+            print("Both --pretrained and --resume_checkpoint were provided; resume_checkpoint will override model weights inside trainer.")
+
         if args.pretrained:
             checkpoint = args.pretrained
-            pretrained_state = torch.load(checkpoint, map_location="cpu")
-            if isinstance(pretrained_state, dict) and isinstance(pretrained_state.get("state_dict"), dict):
-                pretrained_state = pretrained_state["state_dict"]
+            pretrained_checkpoint = torch.load(checkpoint, map_location="cpu")
+            pretrained_state = _extract_checkpoint_state_dict(pretrained_checkpoint)
             if not isinstance(pretrained_state, dict):
                 raise ValueError(f"Unsupported checkpoint format: {checkpoint}")
 
@@ -250,6 +271,23 @@ if __name__ == "__main__":
                     print(f"  {key}: checkpoint {source_shape} -> model {target_shape}")
                 if len(mismatched_layers) > 10:
                     print(f"  ... {len(mismatched_layers) - 10} more")
+
+            pretrained_report = {
+                "checkpoint": os.path.abspath(checkpoint),
+                "checkpoint_format": "training_state" if isinstance(pretrained_checkpoint, dict) and "model_state_dict" in pretrained_checkpoint else "state_dict",
+                "total_model_tensors": len(model_dict),
+                "matched_tensors": len(matched_layers),
+                "mismatched_tensors": len(mismatched_layers),
+                "unexpected_tensors": len(unexpected_layers),
+                "missing_tensors": len(missing_layers),
+                "mismatched_layers": [
+                    {"name": key, "checkpoint_shape": source_shape, "model_shape": target_shape}
+                    for key, source_shape, target_shape in mismatched_layers
+                ],
+                "unexpected_layers_sample": unexpected_layers[:50],
+                "missing_layers_sample": missing_layers[:50],
+            }
+            _save_json(os.path.join(metrics_path, "pretrained_load_report.json"), pretrained_report)
         # else:
         #     model.apply(init_weights_he)
 
@@ -257,20 +295,24 @@ if __name__ == "__main__":
 
         print("model loaded")
         if args.model =='FoundationKDModelHR':
-            train_loader, val_loader, test_loader = load_hr_dataloader(batch_size=args.batch_size, classes=classes, RGB_TO_CLASSES=RGB_TO_CLASSES, root_dir=dataset_dir, size=size, num_tiles=num_tiles, scale_factor=16)
+            train_loader, val_loader, test_loader = load_hr_dataloader(batch_size=args.batch_size, classes=classes, RGB_TO_CLASSES=RGB_TO_CLASSES, root_dir=dataset_dir, size=size, num_tiles=num_tiles, scale_factor=16, num_workers=args.num_workers, pin_memory=use_cuda)
         elif args.model in sr_seg_models or args.model in sr_only_models:
             print("Sr + Seg model")
-            train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, classes=classes, RGB_TO_CLASSES=RGB_TO_CLASSES, root_dir=dataset_dir, size=size, mask_scale=mask_scale, num_tiles=num_tiles, scale_factor=scale_factor)
+            train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, classes=classes, RGB_TO_CLASSES=RGB_TO_CLASSES, root_dir=dataset_dir, size=size, mask_scale=mask_scale, num_tiles=num_tiles, scale_factor=scale_factor, num_workers=args.num_workers, pin_memory=use_cuda)
         else:
-            train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, classes=classes, RGB_TO_CLASSES=RGB_TO_CLASSES, root_dir=dataset_dir, size=size, mask_scale=mask_scale, num_tiles=num_tiles)
+            train_loader, val_loader, test_loader = load_dataloader(batch_size=args.batch_size, classes=classes, RGB_TO_CLASSES=RGB_TO_CLASSES, root_dir=dataset_dir, size=size, mask_scale=mask_scale, num_tiles=num_tiles, num_workers=args.num_workers, pin_memory=use_cuda)
         print("dataloader loaded")
 
-        optimizer = optim.Adam(model.parameters(), lr=args.lr)
+        if args.optimizer == 'AdamW':
+            optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        else:
+            optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
         # weight = torch.Tensor([0.3, 1.0, 1.5, 1.5, 1.0]).to(device)
         # criterion_seg = nn.CrossEntropyLoss(weight=weight)
         criterion_seg = nn.CrossEntropyLoss(weight=torch.tensor(weights).to(device))
         criterion_sr = nn.L1Loss()
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10)
+        scheduler_mode = 'max' if args.monitor_metric == 'val_miou' else 'min'
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode=scheduler_mode, factor=0.5, patience=10)
         torch.cuda.empty_cache()
 
         wandb_enabled = False
@@ -318,16 +360,32 @@ if __name__ == "__main__":
             "epochs": num_epochs,
             "batch_size": args.batch_size,
             "learning_rate": args.lr,
+            "optimizer": args.optimizer,
+            "weight_decay": args.weight_decay,
+            "monitor_metric": args.monitor_metric,
+            "scheduler_mode": scheduler_mode,
             "pretrained": args.pretrained,
+            "resume_checkpoint": args.resume_checkpoint,
+            "save_every": args.save_every,
+            "save_full_snapshots": args.save_full_snapshots,
+            "num_workers": args.num_workers,
+            "pin_memory": use_cuda,
+            "tf32": bool(args.tf32),
+            "torch_version": torch.__version__,
+            "torch_cuda_version": torch.version.cuda,
             "early_stop": args.early_stop,
             "patience": args.patience,
             "wandb_enabled": wandb_enabled,
             "run_label": run_label,
+            "run_dir": run_dir,
             "weight_dir": os.path.abspath(weight_path),
             "image_dir": os.path.abspath(image_path),
             "metrics_dir": os.path.abspath(metrics_path),
             "best_checkpoint_path": os.path.abspath(weight_file_path),
             "best_checkpoint_cpu_path": os.path.abspath(weight_file_path.replace(".pth", "_cpu.pth")),
+            "latest_training_state_path": os.path.abspath(os.path.join(weight_path, "latest_training_state.pth")),
+            "best_training_state_path": os.path.abspath(os.path.join(weight_path, "best_training_state.pth")),
+            "pretrained_load_report_path": os.path.abspath(os.path.join(metrics_path, "pretrained_load_report.json")) if args.pretrained else None,
             "train_metrics_path": os.path.abspath(train_metrics_path),
             "best_metrics_path": os.path.abspath(best_metrics_path),
             "test_metrics_path": os.path.abspath(test_metrics_path),
@@ -373,6 +431,11 @@ if __name__ == "__main__":
                 train_metrics_path=train_metrics_path,
                 best_metrics_path=best_metrics_path,
                 wandb_setup=wandb_enabled,
+                monitor_metric=args.monitor_metric,
+                checkpoint_dir=weight_path,
+                resume_checkpoint=args.resume_checkpoint,
+                save_every=args.save_every,
+                save_full_snapshots=args.save_full_snapshots,
             )
             evaluate_on_test_set(
                 model,

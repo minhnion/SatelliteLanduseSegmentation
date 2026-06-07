@@ -35,15 +35,35 @@ def parse_args():
     parser.add_argument('--dim', type=int, default=64, help='embedding size')
     parser.add_argument('--l2', type=float, default=1e-3, help='l2 regularization weight')
     parser.add_argument('--epoch', type=int, default=100, help='number of epochs')
+    parser.add_argument('--num_workers', type=int, default=4, help='DataLoader worker count')
     parser.add_argument('--depth', type=int, default=8, help='depth')
     parser.add_argument('--heads', type=int, default=8, help='number of heads')
     parser.add_argument('--dropout', type=float, default=0.2, help='dropout')
     parser.add_argument('--pretrained', type=str, default=None, help='use pretrained model')
+    parser.add_argument(
+        '--resume_checkpoint',
+        type=str,
+        default=None,
+        help='resume a full training-state checkpoint with optimizer/scheduler/epoch state',
+    )
     parser.add_argument('--dataset', type=str, default='north_vn', help='dataset')
     parser.add_argument('--data_path', type=str, default='dataset', help='data set path')
     parser.add_argument('--log_path', type=str, default='.', help='logging path')
+    parser.add_argument('--run_dir', type=str, default=None, help='explicit run directory containing checkpoints/images/metrics')
     parser.add_argument('--experiment_name', type=str, default=None, help='optional readable run name')
     parser.add_argument('--export_inference_path', type=str, default=None, help='optional path to export best checkpoint for inference')
+    parser.add_argument('--optimizer', type=str, default='Adam', choices=['Adam', 'AdamW'], help='optimizer')
+    parser.add_argument('--weight_decay', type=float, default=0.0, help='optimizer weight decay')
+    parser.add_argument(
+        '--monitor_metric',
+        type=str,
+        default='val_loss',
+        choices=['val_loss', 'val_miou'],
+        help='metric used for best checkpoint and early stopping',
+    )
+    parser.add_argument('--save_every', type=int, default=0, help='save epoch training-state every N epochs; 0 disables')
+    parser.add_argument('--tf32', action='store_true', help='allow TF32 CUDA kernels during training')
+    parser.add_argument('--save_full_snapshots', action='store_true', help='also save full pickled model snapshots on each new best')
     parser.add_argument('--disable_wandb', action='store_true', help='disable Weights & Biases logging')
     parser.add_argument('--early_stop', action='store_true', help='enable early stopping')
     parser.add_argument('--patience', type=int, default=10, help='early stopping patience in epochs')
