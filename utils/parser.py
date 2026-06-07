@@ -56,9 +56,22 @@ def parse_infer_args():
 
     parser.add_argument("--cuda", action='store_true', help='Use CUDA if available')
     parser.add_argument("--gpu_id", type=int, default=0, help="gpu id")
-    parser.add_argument("--input", type=str, default='inference_tif/Resolution3x3', help='input image path')
-    parser.add_argument("--output", type=str, default='inference_png/Resolution3x3', help='output image path')
-    parser.add_argument("--pretrained", type=str, default='inference_model/model.pth', help='pretrained model path')
-    parser.add_argument("--patch_size", type=int, default=256, help='patch size')
+    parser.add_argument("--input", type=str, default='inference_tif', help='input GeoTIFF file or folder')
+    parser.add_argument("--output", type=str, default='inference_png/sentinel1_best', help='output image folder')
+    parser.add_argument("--pretrained", type=str, default='inference_model/model_sentinel1_best.pth', help='pretrained model path')
+    parser.add_argument("--patch_size", type=int, default=512, help='raw Sentinel-1 tile/patch size before model resize; 512 runs one full-tile pass for current 3km S1 tiles')
+    parser.add_argument("--stride", type=int, default=None, help='raw patch stride; default is patch_size // 2')
+    parser.add_argument("--model_input_size", type=int, default=512, help='ViTUnet input size used during training')
     parser.add_argument("--model", type=str, default='UNet', choices=['UNet', 'FoundationModel'], help='model to use')
+    parser.add_argument("--no_recursive", action='store_true', help='do not search input folders recursively')
+    parser.add_argument("--preserve_dirs", action='store_true', help='preserve input subfolders in output folder')
+    parser.add_argument("--limit", type=int, default=None, help='optional max number of TIF files to process')
+    parser.add_argument("--dry_run", action='store_true', help='list matched files without running model inference')
+    parser.add_argument("--fp16", action='store_true', help='use FP16 inference on CUDA; faster/lower memory but less numerically precise')
+    parser.add_argument("--tf32", action='store_true', help='allow TF32 CUDA kernels; faster on Ampere/A100 but slightly less precise than full FP32')
+    parser.add_argument(
+        "--allow_sentinel1_to_13_adapter",
+        action='store_true',
+        help='allow the legacy pseudo-13-band adapter when a 13-channel checkpoint is used on 2-band Sentinel-1 input',
+    )
     return parser.parse_args()

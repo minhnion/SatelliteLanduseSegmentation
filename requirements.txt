@@ -1,19 +1,33 @@
-torch
-torchvision
-wandb
-rasterio
-opencv-python
-einops
-tqdm
+# Core deep learning
+# CUDA 12.8 wheels match the server driver (NVIDIA 570 / CUDA 12.8).
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.11.0+cu128
+torchvision==0.26.0+cu128
+
+# Sentinel-1 inference and geospatial IO
+rasterio==1.4.4
+pyproj==3.7.2
+opencv-python==4.13.0.92
+Pillow==12.2.0
+numpy==2.4.4
+einops==0.8.2
+python-dotenv==1.2.2
+tqdm==4.67.3
+scipy==1.17.1
+
+# Area analysis notebooks and visual QC
+pandas==2.3.3
+matplotlib==3.10.8
+
+# Training and evaluation
 scikit-learn
-matplotlib
-python-dotenv
-# torchgeo==git+https://github.com/microsoft/torchgeo
+wandb
+scikit-image
+
+# Optional experimental model families used by older job scripts
 satlaspretrain_models
-opencv-python
 thop
 torchsummary
-flash_attn
-scikit-image
 torchgeo
 mamba_ssm
+flash_attn

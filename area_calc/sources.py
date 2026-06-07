@@ -90,24 +90,46 @@ class InferenceSource(ImageSource):
         self.png_dir = Path(png_dir)
         self._missing: list = []
 
+    def _tif_index(self):
+        tif_paths = sorted(self.tif_dir.rglob("*.tif"))
+        index = {}
+        for tif_path in tif_paths:
+            existing = index.get(tif_path.name)
+            if existing is not None:
+                raise ValueError(
+                    f"Duplicate TIF filename found: {tif_path.name} in {existing.parent} and {tif_path.parent}"
+                )
+            index[tif_path.name] = tif_path
+        return index
+
     def iter_pairs(self):
         if not self.tif_dir.exists():
             raise FileNotFoundError(f"TIF folder not found: {self.tif_dir}")
         if not self.png_dir.exists():
             raise FileNotFoundError(f"PNG folder not found: {self.png_dir}")
 
-        png_paths = sorted(self.png_dir.glob("*_infered.png"))
+        tif_index = self._tif_index()
+        if not tif_index:
+            raise FileNotFoundError(f"No *.tif files in {self.tif_dir}")
+
+        png_paths = sorted(self.png_dir.rglob("*_infered.png"))
         if not png_paths:
             raise FileNotFoundError(f"No *_infered.png files in {self.png_dir}")
 
+        seen_stems = set()
         for png_path in png_paths:
             match = _PNG_NAME_RE.match(png_path.name)
             if not match:
                 raise ValueError(f"Unexpected PNG name (expected *_infered.png): {png_path.name}")
             stem = match.group("stem")
-            tif_path = self.tif_dir / f"{stem}.tif"
-            if not tif_path.exists():
-                self._missing.append(MissingPair(png_path.name, tif_path.name))
+            if stem in seen_stems:
+                raise ValueError(f"Duplicate inferred PNG stem found: {stem}")
+            seen_stems.add(stem)
+
+            tif_name = f"{stem}.tif"
+            tif_path = tif_index.get(tif_name)
+            if tif_path is None:
+                self._missing.append(MissingPair(png_path.name, tif_name))
                 continue
             season = detect_season(stem)
             if season is None:
