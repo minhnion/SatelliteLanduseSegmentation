@@ -1,0 +1,13 @@
+# Install this only when training --model PyramidMamba.
+#
+# These packages build CUDA extensions when a matching prebuilt wheel is not
+# available. They require a local nvcc that matches the PyTorch CUDA major
+# version. For the default torch==2.11.0+cu128 environment, do not build them
+# with the system CUDA 11.x compiler.
+-r requirements.txt
+
+mamba_ssm==2.3.2.post1
+
+# flash_attn is not used by the current code path, but keep it here for older
+# experimental jobs that import custom FlashAttention kernels directly.
+flash_attn==2.8.3

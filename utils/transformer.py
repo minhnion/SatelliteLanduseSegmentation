@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils.tools import extract_image_patches
 import math
-from flash_attn.flash_attn_interface import flash_attn_func
 
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).

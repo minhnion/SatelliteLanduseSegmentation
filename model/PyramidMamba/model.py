@@ -4,7 +4,13 @@ import torch.nn.functional as F
 from einops import rearrange, repeat
 from timm.layers import DropPath, to_2tuple, trunc_normal_
 import timm
-from mamba_ssm import Mamba
+try:
+    from mamba_ssm import Mamba
+except ImportError as exc:
+    raise ImportError(
+        "PyramidMamba requires mamba_ssm. Install requirements-pyramidmamba.txt "
+        "with a CUDA compiler that matches the PyTorch CUDA build."
+    ) from exc
 
 class ConvBNReLU(nn.Sequential):
     def __init__(self, in_channels, out_channels, kernel_size=3, dilation=1, stride=1, norm_layer=nn.BatchNorm2d, bias=False):

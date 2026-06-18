@@ -1,5 +1,5 @@
 # Core deep learning
-# CUDA 12.8 wheels match the server driver (NVIDIA 570 / CUDA 12.8).
+# CUDA 12.8 wheels are verified in the current training environment.
 --extra-index-url https://download.pytorch.org/whl/cu128
 torch==2.11.0+cu128
 torchvision==0.26.0+cu128
@@ -23,11 +23,10 @@ matplotlib==3.10.8
 scikit-learn
 wandb
 scikit-image
+timm
 
-# Optional experimental model families used by older job scripts
+# Optional model families that do not require compiling local CUDA extensions.
 satlaspretrain_models
 thop
 torchsummary
 torchgeo
-mamba_ssm
-flash_attn

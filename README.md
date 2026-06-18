@@ -9,6 +9,16 @@ conda activate landuse
 pip install -r requirements.txt
 ```
 
+`requirements.txt` phục vụ luồng train/finetune chính `ViTUnet`. Nếu train
+model thử nghiệm `PyramidMamba`, cài thêm:
+
+```bash
+pip install -r requirements-pyramidmamba.txt --no-build-isolation
+```
+
+Lưu ý `mamba_ssm/flash_attn` cần `nvcc` tương thích với CUDA của PyTorch. Với
+`torch==2.11.0+cu128`, không build bằng compiler CUDA 11.x.
+
 Nếu chọn GPU cụ thể:
 
 ```bash
