@@ -15,6 +15,8 @@ CLASS_TO_RGB = {
 }
 
 CLASSES = list(CLASS_TO_RGB.keys())
+DEFAULT_RAW_PATCH_SIZE = 140
+DEFAULT_PATCH_BATCH_SIZE = 4
 
 
 def _axis_starts(size: int, patch_size: int, stride: int):
@@ -36,7 +38,7 @@ def _segmentation_output(model_output):
     return model_output
 
 
-def _validate_infer_params(image, patch_size, stride, model_input_size):
+def _validate_infer_params(image, patch_size, stride, model_input_size, patch_batch_size):
     if image.ndim != 3:
         raise ValueError(f"Expected image with shape (H, W, C), got {image.shape}")
     if patch_size <= 0:
@@ -45,27 +47,36 @@ def _validate_infer_params(image, patch_size, stride, model_input_size):
         raise ValueError(f"stride must be positive, got {stride}")
     if model_input_size <= 0:
         raise ValueError(f"model_input_size must be positive, got {model_input_size}")
+    if patch_batch_size <= 0:
+        raise ValueError(f"patch_batch_size must be positive, got {patch_batch_size}")
 
 
 def infer_patches(
     model,
     device,
     image: np.ndarray,
-    patch_size: int = 512,
+    patch_size: int = DEFAULT_RAW_PATCH_SIZE,
     model_input_size: int = 512,
     stride: Optional[int] = None,
     n_classes: Optional[int] = None,
+    patch_batch_size: int = DEFAULT_PATCH_BATCH_SIZE,
 ):
     """Run sliding-window Sentinel-1 inference with train-time ViTUnet sizing.
 
-    The Sentinel-1 ViTUnet was trained on 512x512 tensors. Current 3km
-    inference tiles are smaller than 512px, so the default runs one full-tile
-    pass and resizes that tile to 512x512 before
-    the model forward pass, then the softmax probabilities are resized back to
-    the raw patch footprint before overlap averaging.
+    Training split each roughly 558x558 source image into a 4x4 grid before
+    resizing each raw 139-140px patch to 512x512. Inference must preserve that
+    raw ground-footprint scale: crop approximately 140px windows, resize each
+    window to 512x512 for the model, then resize probabilities back and average
+    overlapping windows.
     """
     stride = patch_size // 2 if stride is None else stride
-    _validate_infer_params(image, patch_size, stride, model_input_size)
+    _validate_infer_params(
+        image,
+        patch_size,
+        stride,
+        model_input_size,
+        patch_batch_size,
+    )
 
     image_height, image_width = image.shape[:2]
     n_classes = int(n_classes or getattr(model, "n_classes", len(CLASSES)))
@@ -75,19 +86,30 @@ def infer_patches(
 
     row_starts = _axis_starts(image_height, patch_size, stride)
     col_starts = _axis_starts(image_width, patch_size, stride)
+    windows = [
+        (
+            top,
+            min(top + patch_size, image_height),
+            left,
+            min(left + patch_size, image_width),
+        )
+        for top in row_starts
+        for left in col_starts
+    ]
 
     model.eval()
     model_dtype = next(model.parameters()).dtype
     use_autocast = device.type == "cuda" and model_dtype == torch.float16
 
     with torch.inference_mode():
-        for top in row_starts:
-            bottom = min(top + patch_size, image_height)
-            for left in col_starts:
-                right = min(left + patch_size, image_width)
-                patch = image[top:bottom, left:right]
+        for batch_start in range(0, len(windows), patch_batch_size):
+            batch_windows = windows[batch_start:batch_start + patch_batch_size]
+            patch_tensors = []
 
-                patch_tensor = torch.from_numpy(patch).permute(2, 0, 1).unsqueeze(0)
+            for top, bottom, left, right in batch_windows:
+                patch = image[top:bottom, left:right]
+                patch_tensor = torch.from_numpy(np.ascontiguousarray(patch))
+                patch_tensor = patch_tensor.permute(2, 0, 1).unsqueeze(0)
                 patch_tensor = patch_tensor.to(device=device, dtype=model_dtype)
                 if patch_tensor.shape[-2:] != (model_input_size, model_input_size):
                     patch_tensor = F.interpolate(
@@ -96,21 +118,26 @@ def infer_patches(
                         mode="bilinear",
                         align_corners=False,
                     )
+                patch_tensors.append(patch_tensor)
 
-                with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=use_autocast):
-                    logits = _segmentation_output(model(patch_tensor))
+            patch_batch = torch.cat(patch_tensors, dim=0)
+            with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=use_autocast):
+                logits = _segmentation_output(model(patch_batch))
 
-                if logits.shape[1] != n_classes:
-                    raise ValueError(f"Model returned {logits.shape[1]} classes, expected {n_classes}")
+            if logits.shape[1] != n_classes:
+                raise ValueError(f"Model returned {logits.shape[1]} classes, expected {n_classes}")
 
-                probabilities = torch.softmax(logits.float(), dim=1)
-                probabilities = F.interpolate(
-                    probabilities,
+            probabilities = torch.softmax(logits.float(), dim=1)
+            for batch_index, (top, bottom, left, right) in enumerate(batch_windows):
+                patch_probabilities = F.interpolate(
+                    probabilities[batch_index:batch_index + 1],
                     size=(bottom - top, right - left),
                     mode="bilinear",
                     align_corners=False,
                 )
-                probabilities_np = probabilities.squeeze(0).permute(1, 2, 0).cpu().numpy()
+                probabilities_np = (
+                    patch_probabilities.squeeze(0).permute(1, 2, 0).cpu().numpy()
+                )
 
                 probability_sum[top:bottom, left:right] += probabilities_np
                 count_map[top:bottom, left:right] += 1.0

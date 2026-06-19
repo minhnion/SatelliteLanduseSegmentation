@@ -135,6 +135,12 @@ Chạy infer toàn bộ `inference_tif/`:
 INPUT=inference_tif OUTPUT=inference_png/sentinel1_best PRETRAINED_MODEL=inference_model/model_sentinel1_best.pth bash infer_sentinel1.sh
 ```
 
+Mặc định inference dùng raw patch `140x140`, stride `70`, rồi resize từng
+patch lên `512x512`. Cấu hình này khớp với lúc train: ảnh nguồn khoảng
+`558x558` được chia thành lưới `4x4` trước khi resize. Không dùng
+`PATCH_SIZE=512` cho checkpoint này vì nó thay đổi mạnh phạm vi không gian mà
+model nhìn thấy.
+
 Kiểm tra danh sách file trước khi chạy model:
 
 ```bash

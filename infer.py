@@ -145,6 +145,7 @@ def inference_image(
     patch_size: int,
     model_input_size: int,
     stride: Optional[int],
+    patch_batch_size: int,
     allow_sentinel1_to_13_adapter: bool,
 ):
     image = open_tif_image(str(input_path))
@@ -160,6 +161,7 @@ def inference_image(
         model_input_size=model_input_size,
         stride=stride,
         n_classes=getattr(model, "n_classes", None),
+        patch_batch_size=patch_batch_size,
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -205,6 +207,8 @@ def validate_args(args):
         raise ValueError(f"stride must be positive, got {args.stride}")
     if args.limit is not None and args.limit <= 0:
         raise ValueError(f"limit must be positive, got {args.limit}")
+    if args.patch_batch_size <= 0:
+        raise ValueError(f"patch_batch_size must be positive, got {args.patch_batch_size}")
 
 
 def main():
@@ -258,6 +262,15 @@ def main():
         model = model.half()
         print("Using FP16 inference on CUDA")
 
+    effective_stride = args.stride if args.stride is not None else args.patch_size // 2
+    print(
+        "Inference config -> "
+        f"raw_patch_size: {args.patch_size}, "
+        f"stride: {effective_stride}, "
+        f"model_input_size: {args.model_input_size}, "
+        f"patch_batch_size: {args.patch_batch_size}"
+    )
+
     start_time = time.time()
     for index, (tif_path, output_path) in enumerate(output_plan, start=1):
         print(f"[{index}/{len(output_plan)}] {tif_path}")
@@ -269,6 +282,7 @@ def main():
             patch_size=args.patch_size,
             model_input_size=args.model_input_size,
             stride=args.stride,
+            patch_batch_size=args.patch_batch_size,
             allow_sentinel1_to_13_adapter=args.allow_sentinel1_to_13_adapter,
         )
 
